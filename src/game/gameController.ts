@@ -1,7 +1,7 @@
 import { GameManager } from './gameManager';
 import { CanvasRenderer, AnimationController } from './renderer';
 import { InputHandler } from './inputHandler';
-import { Direction, Move } from './logic';
+import { Direction, Move, moveGrid } from './logic';
 
 export interface GameControllerConfig {
   canvas: HTMLCanvasElement;
@@ -141,8 +141,7 @@ export class GameController {
     moves: Move[];
     hasChanged: boolean;
   } {
-    // Import the moveGrid function to calculate moves without modifying state
-    const { moveGrid } = require('./logic');
+    // Use the imported moveGrid function
     const result = moveGrid(grid, direction);
     return {
       moves: result.moves,

@@ -1,36 +1,37 @@
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
 // Mock Canvas API for tests
-HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
-  fillRect: jest.fn(),
-  clearRect: jest.fn(),
-  getImageData: jest.fn(() => ({
+HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
+  fillRect: vi.fn(),
+  clearRect: vi.fn(),
+  getImageData: vi.fn(() => ({
     data: new Uint8ClampedArray(4),
   })),
-  putImageData: jest.fn(),
-  createImageData: jest.fn(() => []),
-  setTransform: jest.fn(),
-  drawImage: jest.fn(),
-  save: jest.fn(),
-  restore: jest.fn(),
-  scale: jest.fn(),
-  rotate: jest.fn(),
-  translate: jest.fn(),
-  transform: jest.fn(),
-  beginPath: jest.fn(),
-  closePath: jest.fn(),
-  moveTo: jest.fn(),
-  lineTo: jest.fn(),
-  bezierCurveTo: jest.fn(),
-  quadraticCurveTo: jest.fn(),
-  arc: jest.fn(),
-  fill: jest.fn(),
-  stroke: jest.fn(),
-  clip: jest.fn(),
-  fillText: jest.fn(),
-  strokeText: jest.fn(),
-  measureText: jest.fn(() => ({ width: 0 })),
-  isPointInPath: jest.fn(),
+  putImageData: vi.fn(),
+  createImageData: vi.fn(() => []),
+  setTransform: vi.fn(),
+  drawImage: vi.fn(),
+  save: vi.fn(),
+  restore: vi.fn(),
+  scale: vi.fn(),
+  rotate: vi.fn(),
+  translate: vi.fn(),
+  transform: vi.fn(),
+  beginPath: vi.fn(),
+  closePath: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  bezierCurveTo: vi.fn(),
+  quadraticCurveTo: vi.fn(),
+  arc: vi.fn(),
+  fill: vi.fn(),
+  stroke: vi.fn(),
+  clip: vi.fn(),
+  fillText: vi.fn(),
+  strokeText: vi.fn(),
+  measureText: vi.fn(() => ({ width: 0 })),
+  isPointInPath: vi.fn(),
   font: '',
   textAlign: '',
   textBaseline: '',
@@ -39,4 +40,4 @@ HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
   lineWidth: 1,
 })) as any;
 
-HTMLCanvasElement.prototype.toDataURL = jest.fn(() => 'data:image/png;base64,mock');
+HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/png;base64,mock');
