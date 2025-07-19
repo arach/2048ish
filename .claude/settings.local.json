@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app:*)",
+      "Bash(npx:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(ls:*)",
+      "Bash(true)",
+      "Bash(npm uninstall:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(node:*)",
+      "Bash(claude mcp:*)",
+      "Bash(npm search:*)",
+      "Bash(npm info:*)",
+      "WebFetch(domain:modelcontextprotocol.io)",
+      "WebFetch(domain:code.visualstudio.com)",
+      "mcp__playwright__browser_navigate",
+      "Bash(pnpm dev:*)",
+      "Bash(curl:*)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_console_messages",
+      "WebFetch(domain:emilkowal.ski)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_tab_new",
+      "mcp__playwright__browser_snapshot",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": true
+}

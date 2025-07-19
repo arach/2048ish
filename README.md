@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 2048ish
+
+A modern implementation of the classic 2048 game built with Next.js, React, TypeScript, and Tailwind CSS.
+
+## Features
+
+- 🎮 Classic 2048 gameplay
+- 📱 Responsive design (mobile and desktop)
+- 👆 Touch/swipe controls for mobile
+- ⌨️ Keyboard controls (arrow keys and WASD)
+- 💾 Persistent best score
+- ✨ Smooth animations with framer-motion
+- 🎨 Clean UI using shadcn/ui components
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ 
+- npm or pnpm
+
+### Installation
 
 ```bash
-npm run dev
+# Install dependencies
+npm install
 # or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Run the development server
+npm run dev
+# or
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000) with your browser to play the game.
 
-## Learn More
+## How to Play
 
-To learn more about Next.js, take a look at the following resources:
+Use your arrow keys or swipe to move the tiles. When two tiles with the same number touch, they merge into one. The goal is to create a tile with the number 2048!
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Coming Soon
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 🤖 AI player agent using Mastra framework
+- 👨‍⚖️ AI judge agent that comments on moves
+- 📊 Game statistics and analytics
+- 🏆 Leaderboard functionality
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Animations**: Framer Motion
+- **Development**: Turbopack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT
