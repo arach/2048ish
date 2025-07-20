@@ -59,7 +59,7 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
     if (gameRef?.current) {
       // Apply saved slowdown
       if (gameRef.current.setAnimationDuration && animationSlowdown !== 1) {
-        const baseDuration = animationState?.baseDuration || 125;
+        const baseDuration = animationState?.baseDuration || 150;
         gameRef.current.setAnimationDuration(baseDuration * animationSlowdown);
       }
       
@@ -70,18 +70,12 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
     }
   }, [gameRef, animationState?.baseDuration]); // Only run when gameRef becomes available
   
-  // Poll for move info updates
+  // Get move info from game state instead of polling
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (gameRef?.current?.getLastMoveInfo) {
-        const moves = gameRef.current.getLastMoveInfo();
-        // Always update, even if empty (to clear old moves)
-        setLastMoveInfo(moves || []);
-      }
-    }, 100);
-    
-    return () => clearInterval(interval);
-  }, [gameRef]);
+    if (gameState?.lastMoves) {
+      setLastMoveInfo(gameState.lastMoves);
+    }
+  }, [gameState?.lastMoves]);
   
   const handleCopy = useCallback(async (data: any, section: string) => {
     try {
@@ -505,9 +499,7 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                           // Get moves from all sources and use the most recent non-empty one
                           const moveInfo = gameState?.lastMoves || lastMoveInfo || gameRef?.current?.getLastMoveInfo?.() || [];
                           
-                          console.log('[StateDebugger] Move sources - gameState:', gameState?.lastMoves?.length || 0, 
-                                      'lastMoveInfo:', lastMoveInfo?.length || 0, 
-                                      'gameRef:', gameRef?.current?.getLastMoveInfo?.()?.length || 0);
+                          // Removed excessive logging
                           // Get tile states properly
                           let tileStates = gameState?.tileStates || {};
                           if (Object.keys(tileStates).length === 0 && gameRef?.current?.getTileStates) {
@@ -520,18 +512,7 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                           }
                           const stateCount = Object.keys(tileStates).length;
                           
-                          // Debug to see what we have
-                          if (moveInfo.length === 0 && Object.keys(tileStates).length > 0) {
-                            console.log('[StateDebugger] Have tile states but no moves:', tileStates);
-                          }
-                          
-                          if (stateCount > 0 && moveInfo.length === 0) {
-                            console.log('[StateDebugger] States available:', stateCount, 'but no moves');
-                          }
-                          
-                          if (stateCount > 0 || moveInfo.length > 0) {
-                            console.log('[StateDebugger] Rendering - States:', stateCount, 'Moves:', moveInfo.length);
-                          }
+                          // Removed debug logging
                           
                           if (moveInfo.length === 0) {
                             // If we have tile states but no move info, show that
@@ -684,7 +665,7 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                           
                           // Apply slowdown to game controller
                           if (gameRef?.current?.setAnimationDuration) {
-                            const baseDuration = animationState?.baseDuration || 125;
+                            const baseDuration = animationState?.baseDuration || 150;
                             gameRef.current.setAnimationDuration(baseDuration * newSlowdown);
                           }
                         }}

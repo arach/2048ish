@@ -87,17 +87,18 @@ export default function Game2048() {
           lastMoves: moves
         });
         
-        // Log for debugging
-        console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
+        // Log only when there's something meaningful to report
+        if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
+          console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
+        }
       }
     };
 
     // Subscribe to state changes
-    // Update immediately and then periodically
+    // Update immediately
     updateUndoRedo();
-    const interval = setInterval(updateUndoRedo, 50);
     
-    // Also subscribe to game state changes directly
+    // Subscribe to game state changes directly - no polling needed
     const unsubscribe = controller.subscribeToGameState?.(() => {
       updateUndoRedo();
     });
@@ -105,14 +106,13 @@ export default function Game2048() {
     // Update animation state for debug
     setDebugAnimationState({
       duration: animationSpeed,
-      baseDuration: 125,
+      baseDuration: 150,
       style: animationMode,
       easing: easingFunction,
       activeCount: 0
     });
 
     return () => {
-      clearInterval(interval);
       if (unsubscribe) unsubscribe();
       controller.destroy();
     };

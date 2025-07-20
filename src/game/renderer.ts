@@ -31,7 +31,7 @@ export const defaultConfig: RenderConfig = {
   cellGap: 10,
   borderRadius: 6,
   fontSize: 48,
-  animationDuration: 125,
+  animationDuration: 150,
   animationStyle: 'playful',
   easingFunction: 'ease-in-out',
   moveEasing: 'cubic',
@@ -69,6 +69,8 @@ export class CanvasRenderer {
   private animationFrameId: number | null = null;
   private debugMode: boolean = false;
   private tileStates: Map<string, 'new' | 'merged' | 'moved'> = new Map();
+  // Pre-computed top-left pixel positions for each grid cell – avoids recomputing every frame
+  private cellPositions: { x: number; y: number }[][] = [];
 
   constructor(canvas: HTMLCanvasElement, config: Partial<RenderConfig> = {}) {
     this.canvas = canvas;
@@ -79,20 +81,55 @@ export class CanvasRenderer {
     this.ctx = ctx;
     this.config = { ...defaultConfig, ...config };
     this.setupCanvas();
+
+    // Cache pixel positions for each cell so we don't have to recalculate repeatedly
+    this.computeCellPositions();
   }
 
-  private setupCanvas(): void {
+  /**
+   * Pre-compute and cache the pixel x/y of every grid coordinate based on the
+   * current renderer configuration.
+   */
+  private computeCellPositions(): void {
     const { gridSize, cellSize, cellGap } = this.config;
-    const canvasSize = gridSize * cellSize + (gridSize + 1) * cellGap;
-    
-    // Handle high DPI displays
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = canvasSize * dpr;
-    this.canvas.height = canvasSize * dpr;
-    this.canvas.style.width = `${canvasSize}px`;
-    this.canvas.style.height = `${canvasSize}px`;
-    
-    this.ctx.scale(dpr, dpr);
+    this.cellPositions = Array.from({ length: gridSize }, (_, row) =>
+      Array.from({ length: gridSize }, (_, col) => ({
+        x: col * cellSize + (col + 1) * cellGap,
+        y: row * cellSize + (row + 1) * cellGap
+      }))
+    );
+  }
+
+  private getCellPosition(row: number, col: number): { x: number; y: number } {
+    return this.cellPositions[row][col];
+  }
+
+  /**
+   * Low-level routine that draws a single tile whose top-left corner is at the
+   * specified pixel coordinate.  All transformations (translate / scale) are
+   * handled internally so callers can supply simple values.
+   */
+  private drawCellPixels(x: number, y: number, value: number, scale: number = 1): void {
+    const { cellSize, borderRadius, fontSize, colors } = this.config;
+
+    this.ctx.save();
+    this.ctx.translate(x + cellSize / 2, y + cellSize / 2);
+    this.ctx.scale(scale, scale);
+    this.ctx.translate(-cellSize / 2, -cellSize / 2);
+
+    // Background
+    this.ctx.fillStyle = colors.cells[value] || colors.cells[4096];
+    this.roundRect(0, 0, cellSize, cellSize, borderRadius);
+    this.ctx.fill();
+
+    // Value text
+    this.ctx.fillStyle = value <= 4 ? colors.text.light : colors.text.dark;
+    this.ctx.font = `bold ${fontSize}px Arial`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(value.toString(), cellSize / 2, cellSize / 2);
+
+    this.ctx.restore();
   }
 
   public render(grid: Grid, animations: AnimationState[] = []): void {
@@ -116,6 +153,7 @@ export class CanvasRenderer {
         mergePositions.add(`${animation.position[0]},${animation.position[1]}`);
       } else if (animation.type === 'appear') {
         appearPositions.add(`${animation.position[0]},${animation.position[1]}`);
+        console.log('[Renderer] Appear animation at', `${animation.position[0]},${animation.position[1]}`, 'progress:', animation.progress);
       }
     }
     
@@ -150,8 +188,7 @@ export class CanvasRenderer {
     this.ctx.fillStyle = colors.emptyCell;
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
-        const x = col * cellSize + (col + 1) * cellGap;
-        const y = row * cellSize + (row + 1) * cellGap;
+        const { x, y } = this.getCellPosition(row, col);
         this.roundRect(x, y, cellSize, cellSize, borderRadius);
         this.ctx.fill();
       }
@@ -198,33 +235,28 @@ export class CanvasRenderer {
   }
 
   private drawCell(row: number, col: number, value: number, scale: number = 1): void {
-    const { cellSize, cellGap, borderRadius, fontSize, colors } = this.config;
-    const x = col * cellSize + (col + 1) * cellGap;
-    const y = row * cellSize + (row + 1) * cellGap;
-    
-    // Cell background
-    this.ctx.fillStyle = colors.cells[value] || colors.cells[4096];
-    this.ctx.save();
-    this.ctx.translate(x + cellSize / 2, y + cellSize / 2);
-    this.ctx.scale(scale, scale);
-    this.ctx.translate(-cellSize / 2, -cellSize / 2);
-    this.roundRect(0, 0, cellSize, cellSize, borderRadius);
-    this.ctx.fill();
-    
-    // Debug overlay if enabled
+    const { cellSize, borderRadius } = this.config;
+    const { x, y } = this.getCellPosition(row, col);
+
+    this.drawCellPixels(x, y, value, scale);
+
+    // Debug overlay if enabled – only on the base grid, not during animations
     if (this.debugMode) {
       const posKey = `${row},${col}`;
       const tileState = this.tileStates.get(posKey);
-      
+
+      this.ctx.save();
+      this.ctx.translate(x, y);
+
       if (tileState) {
         this.ctx.strokeStyle = tileState === 'new' ? '#4ade80' :     // green-400
-                               tileState === 'merged' ? '#a855f7' :  // purple-400
+                               tileState === 'merged' ? '#a855f7' : // purple-400
                                '#3b82f6';                            // blue-400
         this.ctx.lineWidth = 3;
         this.roundRect(2, 2, cellSize - 4, cellSize - 4, borderRadius);
         this.ctx.stroke();
-        
-        // Small indicator dot
+
+        // Indicator dot
         const dotSize = 8;
         this.ctx.fillStyle = this.ctx.strokeStyle;
         this.ctx.beginPath();
@@ -236,23 +268,15 @@ export class CanvasRenderer {
         this.ctx.lineWidth = 1;
         this.roundRect(2, 2, cellSize - 4, cellSize - 4, borderRadius);
         this.ctx.stroke();
-        
-        // Small gray indicator dot
+
         const dotSize = 6;
         this.ctx.fillStyle = '#4b5563';
         this.ctx.beginPath();
         this.ctx.arc(cellSize - dotSize, dotSize, dotSize / 2, 0, Math.PI * 2);
         this.ctx.fill();
       }
+      this.ctx.restore();
     }
-    
-    // Cell text
-    this.ctx.fillStyle = value <= 4 ? colors.text.light : colors.text.dark;
-    this.ctx.font = `bold ${fontSize}px Arial`;
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(value.toString(), cellSize / 2, cellSize / 2);
-    this.ctx.restore();
   }
 
   private drawAnimations(animations: AnimationState[]): void {
@@ -268,45 +292,20 @@ export class CanvasRenderer {
   }
 
   private drawMoveAnimation(animation: MoveAnimation): void {
-    const { cellSize, cellGap, animationStyle } = this.config;
     const progress = animation.progress;
-    
-    const fromX = animation.from[1] * cellSize + (animation.from[1] + 1) * cellGap;
-    const fromY = animation.from[0] * cellSize + (animation.from[0] + 1) * cellGap;
-    const toX = animation.to[1] * cellSize + (animation.to[1] + 1) * cellGap;
-    const toY = animation.to[0] * cellSize + (animation.to[0] + 1) * cellGap;
-    
-    const x = fromX + (toX - fromX) * progress;
-    const y = fromY + (toY - fromY) * progress;
-    
-    // Draw at actual interpolated position instead of rounding
-    this.ctx.save();
-    this.ctx.translate(x, y);
-    
-    // Scale effect based on animation style
-    if (animationStyle === 'playful') {
-      // Add subtle scale effect during movement
-      const moveScale = 1 - 0.02 * Math.sin(progress * Math.PI);
-      this.ctx.scale(moveScale, moveScale);
+
+    const fromPos = this.getCellPosition(animation.from[0], animation.from[1]);
+    const toPos = this.getCellPosition(animation.to[0], animation.to[1]);
+
+    const x = fromPos.x + (toPos.x - fromPos.x) * progress;
+    const y = fromPos.y + (toPos.y - fromPos.y) * progress;
+
+    let scale = 1;
+    if (this.config.animationStyle === 'playful') {
+      scale = 1 - 0.02 * Math.sin(progress * Math.PI);
     }
-    // Minimal style: no scale effect during movement
-    
-    // Draw the cell at origin since we've already translated
-    const { borderRadius, fontSize, colors } = this.config;
-    
-    // Cell background
-    this.ctx.fillStyle = colors.cells[animation.value] || colors.cells[4096];
-    this.roundRect(0, 0, cellSize, cellSize, borderRadius);
-    this.ctx.fill();
-    
-    // Cell text
-    this.ctx.fillStyle = animation.value <= 4 ? colors.text.light : colors.text.dark;
-    this.ctx.font = `bold ${fontSize}px Arial`;
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(animation.value.toString(), cellSize / 2, cellSize / 2);
-    
-    this.ctx.restore();
+
+    this.drawCellPixels(x, y, animation.value, scale);
   }
 
   private drawAppearAnimation(animation: AppearAnimation): void {
@@ -315,45 +314,62 @@ export class CanvasRenderer {
     
     let scale: number;
     if (animationStyle === 'minimal') {
-      // Simple fade in
-      scale = t;
+      // Subtle fade-in from 0.8 to 1
+      scale = 0.8 + 0.2 * this.easeOutCubic(t);
     } else {
-      // Playful: Bouncy appear effect with overshoot
-      scale = t < 0.5 
-        ? 2 * t * t * (3 * t - 1) // Accelerate with overshoot
-        : 1 + (1 - t) * 0.1 * Math.sin((1 - t) * Math.PI * 4); // Wobble at the end
+      // Playful: Reduced pop effect - more subtle scale
+      if (t < 0.3) {
+        // Start at 0.85 and grow to 1.05
+        const growT = t / 0.3;
+        scale = 0.85 + 0.2 * this.easeOutCubic(growT);
+      } else {
+        // Gentle settle back to 1.0
+        const settleT = (t - 0.3) / 0.7;
+        scale = 1.05 - 0.05 * this.easeInOutCubic(settleT);
+      }
     }
     
-    this.drawCell(animation.position[0], animation.position[1], animation.value, scale);
+    const { x, y } = this.getCellPosition(animation.position[0], animation.position[1]);
+    this.drawCellPixels(x, y, animation.value, scale);
+  }
+  
+  private easeOutCubic(t: number): number {
+    return 1 - Math.pow(1 - t, 3);
+  }
+  
+  private easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+  
+  private easeOutBack(t: number, overshoot: number = 1.0): number {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
   }
 
   private drawMergeAnimation(animation: MergeAnimation): void {
     const { animationStyle } = this.config;
     const t = animation.progress;
-    
+
     let scale: number;
     if (animationStyle === 'minimal') {
-      // Minimal: Clean pulse effect
       scale = 1 + 0.25 * Math.sin(t * Math.PI);
     } else {
-      // Playful: More satisfying pop with better timing
       if (t < 0.4) {
-        // Anticipation - slight shrink
         const anticipateT = t / 0.4;
         scale = 1 - 0.05 * Math.sin(anticipateT * Math.PI);
       } else if (t < 0.7) {
-        // Pop phase - quick growth to 1.4x
         const popT = (t - 0.4) / 0.3;
         scale = 0.95 + 0.45 * Math.sin(popT * Math.PI * 0.5);
       } else {
-        // Settle phase with gentle bounce
         const settleT = (t - 0.7) / 0.3;
         const bounce = Math.sin(settleT * Math.PI * 3) * (1 - settleT) * 0.08;
         scale = 1.4 - 0.4 * settleT + bounce;
       }
     }
-    
-    this.drawCell(animation.position[0], animation.position[1], animation.value, scale);
+
+    const { x, y } = this.getCellPosition(animation.position[0], animation.position[1]);
+    this.drawCellPixels(x, y, animation.value, scale);
   }
 
   private roundRect(x: number, y: number, width: number, height: number, radius: number): void {
@@ -396,29 +412,31 @@ export class CanvasRenderer {
   }
 }
 
-export interface AnimationState {
-  type: 'move' | 'appear' | 'merge';
-  progress: number;
-}
+// -------------------- Animation Types --------------------
 
-export interface MoveAnimation extends AnimationState {
+export interface MoveAnimation {
   type: 'move';
   from: [number, number];
   to: [number, number];
   value: number;
+  progress: number;
 }
 
-export interface AppearAnimation extends AnimationState {
+export interface AppearAnimation {
   type: 'appear';
   position: [number, number];
   value: number;
+  progress: number;
 }
 
-export interface MergeAnimation extends AnimationState {
+export interface MergeAnimation {
   type: 'merge';
   position: [number, number];
   value: number;
+  progress: number;
 }
+
+export type AnimationState = MoveAnimation | AppearAnimation | MergeAnimation;
 
 export class AnimationController {
   private animations: Map<string, AnimationState> = new Map();

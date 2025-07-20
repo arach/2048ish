@@ -36,7 +36,9 @@
       "Bash(pnpm test:*)",
       "Bash(pnpm ls:*)",
       "Bash(pnpm add:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git rm:*)"
     ],
     "deny": []
   },

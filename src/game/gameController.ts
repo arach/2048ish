@@ -52,7 +52,7 @@ export class GameController {
     
     // Set up animation controller
     this.animationController = new AnimationController(
-      config.animationDuration ?? 125,  // Faster default: 125ms
+      config.animationDuration ?? 150,  // Default: 150ms
       (animations) => {
         const state = this.gameManager.getCurrentState();
         this.renderer.render(state.grid, animations);
@@ -64,6 +64,12 @@ export class GameController {
     
     // Set up subscriptions
     this.setupSubscriptions();
+    
+    // Apply saved debug overlay preference
+    const savedOverlay = localStorage.getItem('2048-debug-overlay');
+    if (savedOverlay === 'true') {
+      this.renderer.setDebugMode(true, this.debugTileStates);
+    }
     
     // Initial render
     this.render();
@@ -130,7 +136,7 @@ export class GameController {
     this.isAnimating = true;
     
     // Set up animations with proper sequencing
-    const animDuration = this.config.animationDuration ?? 125;
+    const animDuration = this.config.animationDuration ?? 150;
     
     // Clear previous tile states now that we're starting a new move
     this.tileStates.clear();
@@ -139,15 +145,26 @@ export class GameController {
     // Build new debug states without clearing first
     const newDebugTileStates = new Map<string, 'new' | 'merged' | 'moved'>();
     
+    // First, identify positions where merges will happen
+    const mergePositions = new Map<string, number>(); // position -> count of tiles moving there
+    for (const move of moveResult.moves) {
+      const toKey = `${move.to[0]},${move.to[1]}`;
+      mergePositions.set(toKey, (mergePositions.get(toKey) || 0) + 1);
+    }
+    
     // Phase 1: Add all move animations and start them
     for (const move of moveResult.moves) {
       this.animationController.addMoveAnimation(move);
       // Track moved tiles
       const toKey = `${move.to[0]},${move.to[1]}`;
-      this.tileStates.set(toKey, move.merged ? 'merged' : 'moved');
+      
+      // A position is "merged" only if multiple tiles are moving to it
+      const isMergeDestination = (mergePositions.get(toKey) || 0) > 1;
+      
+      this.tileStates.set(toKey, isMergeDestination ? 'merged' : 'moved');
       // Add to new debug states
-      newDebugTileStates.set(toKey, move.merged ? 'merged' : 'moved');
-      console.log(`[GameController] Move ${this.moveCount}: Tracked ${move.merged ? 'merged' : 'moved'} tile at ${toKey}`);
+      newDebugTileStates.set(toKey, isMergeDestination ? 'merged' : 'moved');
+      // Tracked tile state
     }
     
     // Store the moves for reference
@@ -156,8 +173,7 @@ export class GameController {
     
     // Replace debug states atomically only after we have the new ones ready
     if (this.hasCompletedFirstMove) {
-      console.log('[GameController] Replacing debug states for move', this.moveCount, '- Old size:', this.debugTileStates.size, 'New size:', newDebugTileStates.size);
-      console.log('[GameController] Replacing debug moves - Old:', this.debugMoves.length, 'New:', newDebugMoves.length);
+      // Replacing debug states
       this.debugTileStates = newDebugTileStates;
       this.debugMoves = newDebugMoves;
     } else {
@@ -166,9 +182,14 @@ export class GameController {
         this.debugTileStates.set(key, value);
       });
       this.debugMoves = newDebugMoves;
-      console.log('[GameController] First move - Set debug moves:', newDebugMoves.length);
+      // First move - setting debug moves
     }
-    console.log('[GameController] Move', this.moveCount, '- Total moves:', this.lastMoves.length, 'Debug states after moves:', this.debugTileStates.size);
+    // Move complete - debug states updated
+    
+    // Update the renderer with the new debug states if debug mode is enabled
+    if (this.renderer.getDebugMode && this.renderer.getDebugMode()) {
+      this.renderer.setDebugMode(true, this.debugTileStates);
+    }
     
     // Update the renderer with the new debug states
     this.render();
@@ -245,6 +266,11 @@ export class GameController {
             
             this.pendingNewTile = null;
             
+            // Update the renderer with the new debug states if debug mode is enabled
+            if (this.renderer.getDebugMode && this.renderer.getDebugMode()) {
+              this.renderer.setDebugMode(true, this.debugTileStates);
+            }
+            
             // Force a render update to show the new state
             this.render();
             
@@ -300,11 +326,14 @@ export class GameController {
   private render(): void {
     const state = this.gameManager.getCurrentState();
     this.renderer.render(state.grid);
-    // Always update tile states in renderer for debug mode
+    // Update tile states in renderer if debug mode is enabled
     if (this.renderer.setDebugMode && this.renderer.getDebugMode) {
       const debugMode = this.renderer.getDebugMode();
-      console.log('[GameController] render() - Debug mode:', debugMode, 'Debug states:', this.debugTileStates.size);
-      // Use debug states for the overlay since they persist longer
+      // Only log when there are states to report
+      if (this.debugTileStates.size > 0) {
+        console.log('[GameController] render() - Debug mode:', debugMode, 'Debug states:', this.debugTileStates.size);
+      }
+      // Always pass the current debug states to the renderer
       this.renderer.setDebugMode(debugMode, this.debugTileStates);
     }
   }
@@ -362,7 +391,7 @@ export class GameController {
   }
   
   public getAnimationDuration(): number {
-    return this.config.animationDuration ?? 125;
+    return this.config.animationDuration ?? 150;
   }
 
   public snapshot(): string {
@@ -409,9 +438,6 @@ export class GameController {
   public getTileStates(): Map<string, 'new' | 'merged' | 'moved'> {
     // Return debug snapshot which persists longer
     const states = new Map(this.debugTileStates);
-    if (states.size > 0) {
-      console.log('[GameController] getTileStates called, returning', states.size, 'debug states');
-    }
     return states;
   }
   
@@ -492,9 +518,6 @@ export class GameController {
   
   public getLastMoveInfo(): Move[] {
     // Return debug snapshot which persists longer
-    if (this.debugMoves.length > 0) {
-      console.log('[GameController] getLastMoveInfo returning', this.debugMoves.length, 'moves');
-    }
     return [...this.debugMoves];
   }
   
