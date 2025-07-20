@@ -1,4 +1,4 @@
-import { GameState, Direction, initializeGame, makeMove, serializeGameState, deserializeGameState, RandomGenerator, DefaultRandomGenerator, SeededRandomGenerator, moveGrid, canMove, checkWin } from './logic';
+import { GameState, Direction, Move, initializeGame, makeMove, serializeGameState, deserializeGameState, RandomGenerator, DefaultRandomGenerator, SeededRandomGenerator, moveGrid, canMove, checkWin } from './logic';
 
 export interface GameHistory {
   states: GameState[];
@@ -237,13 +237,6 @@ export class GameManager {
       console.error('Failed to import game state:', error);
       return false;
     }
-  }
-
-  public getHistory(): GameHistory {
-    return {
-      states: [...this.history.states],
-      currentIndex: this.history.currentIndex
-    };
   }
 
   public jumpToState(index: number): boolean {

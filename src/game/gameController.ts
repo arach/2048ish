@@ -327,6 +327,11 @@ export class GameController {
     this.animationController.stop();
   }
 
+  // Public method for programmatic moves (e.g., from agents)
+  public move(direction: Direction): void {
+    this.handleInput(direction);
+  }
+
   // Test helpers
   public simulateMove(direction: Direction): void {
     this.handleInput(direction);

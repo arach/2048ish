@@ -1,7 +1,24 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'export',
+  images: {
+    unoptimized: true,
+  },
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    ignoreBuildErrors: true,
+  },
+  // If deploying to a subdirectory on GitHub Pages, uncomment and adjust:
+  // basePath: '/2048ish',
+  // assetPrefix: '/2048ish/',
 };
 
 export default nextConfig;

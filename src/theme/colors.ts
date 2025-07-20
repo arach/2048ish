@@ -45,8 +45,17 @@ export const theme = {
     text: {
       primary: '#776E65',
       secondary: '#8F8781',
-      light: '#B8AFA6'
-    }
+      tertiary: '#B8AFA6',
+      light: '#B8AFA6',
+      button: '#FFFFFF'
+    },
+    input: {
+      background: '#FFFFFF',
+      border: '#E6DDD1',
+      focusBorder: '#F59563'
+    },
+    accent: '#F59563',
+    danger: '#F67C5F'
   },
   
   // Tile colors

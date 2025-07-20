@@ -2,14 +2,11 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameController } from '../game/gameController';
-import { DebugOverlay } from './debug/DebugOverlay';
 import { NavBar } from './NavBar';
-import { AgentControls } from './AgentControls';
 import { theme } from '../theme/colors';
-import { Direction, GameState } from '../agents/types';
 import Link from 'next/link';
 
-export default function Game2048() {
+export default function Game2048Classic() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<GameController | null>(null);
   const [score, setScore] = useState(0);
@@ -18,19 +15,6 @@ export default function Game2048() {
   const [hasWon, setHasWon] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const [animationMode] = useState<'minimal' | 'playful'>('playful');
-  
-  // Debug state
-  const [debugGameState, setDebugGameState] = useState<any>(null);
-  const [debugAnimationState, setDebugAnimationState] = useState<any>({
-    duration: 150,
-    baseDuration: 150,
-    style: animationMode,
-    easing: 'ease-in-out',
-    activeCount: 0,
-    isAnimating: false,
-    lastAnimationTime: 0
-  });
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -53,7 +37,7 @@ export default function Game2048() {
       },
       onGameOver: () => setGameOver(true),
       onWin: () => setHasWon(true),
-      animationStyle: animationMode,
+      animationStyle: 'playful',
       easingFunction: 'ease-in-out'
     });
 
@@ -63,79 +47,20 @@ export default function Game2048() {
     const updateUndoRedo = () => {
       setCanUndo(controller.canUndo());
       setCanRedo(controller.canRedo());
-      
-      // Update debug states
-      if (controller.getGameState) {
-        const state = controller.getGameState();
-        const tileStatesMap = controller.getTileStates ? controller.getTileStates() : new Map();
-        const tileStatesObj = {};
-        
-        // Convert Map to object properly
-        if (tileStatesMap instanceof Map) {
-          tileStatesMap.forEach((value, key) => {
-            tileStatesObj[key] = value;
-          });
-        } else {
-          Object.assign(tileStatesObj, tileStatesMap);
-        }
-        
-        const moves = controller.getLastMoveInfo ? controller.getLastMoveInfo() : [];
-        
-        setDebugGameState({
-          ...state,
-          moves: controller.getStats?.()?.moves || 0,
-          maxTile: state.grid ? Math.max(...state.grid.flat().filter(Boolean)) : 0,
-          tileStates: tileStatesObj,
-          lastMoves: moves
-        });
-        
-        // Log only when there's something meaningful to report
-        if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
-          console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
-        }
-      }
     };
 
     // Subscribe to state changes
-    // Update immediately
     updateUndoRedo();
     
-    // Subscribe to game state changes directly - no polling needed
     const unsubscribe = controller.subscribeToGameState?.(() => {
       updateUndoRedo();
     });
-    
-    // Update animation state for debug
-    if (controller.getAnimationState) {
-      const animState = controller.getAnimationState();
-      setDebugAnimationState({
-        duration: animState.duration,
-        baseDuration: animState.baseDuration,
-        style: animationMode,
-        easing: 'ease-in-out',
-        activeCount: animState.activeCount,
-        isAnimating: animState.isAnimating,
-        lastAnimationTime: animState.lastAnimationTime
-      });
-      console.log('[Game2048] Debug - Animation state:', debugAnimationState);
-    } else {
-      setDebugAnimationState({
-        duration: 150,
-        baseDuration: 150,
-        style: animationMode,
-        easing: 'ease-in-out',
-        activeCount: 0,
-        isAnimating: false,
-        lastAnimationTime: 0
-      });
-      console.log('[Game2048] Debug - Animation state (else):', debugAnimationState);
-    }
 
     return () => {
       if (unsubscribe) unsubscribe();
       controller.destroy();
     };
-  }, [bestScore, animationMode]);
+  }, [bestScore]);
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
@@ -156,31 +81,6 @@ export default function Game2048() {
       controllerRef.current.redo();
     }
   }, []);
-
-  const handleAgentMove = useCallback((direction: Direction) => {
-    if (controllerRef.current) {
-      controllerRef.current.move(direction);
-    }
-  }, []);
-
-  const getGameState = useCallback((): GameState => {
-    if (!controllerRef.current) {
-      return {
-        grid: [[null, null, null, null], [null, null, null, null], [null, null, null, null], [null, null, null, null]],
-        score: 0,
-        isGameOver: true,
-        moveCount: 0
-      };
-    }
-    
-    const state = controllerRef.current.getGameState?.() || {};
-    return {
-      grid: state.grid || [[null, null, null, null], [null, null, null, null], [null, null, null, null], [null, null, null, null]],
-      score: state.score || 0,
-      isGameOver: gameOver,
-      moveCount: controllerRef.current.getStats?.()?.moves || 0
-    };
-  }, [gameOver]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4" 
@@ -290,31 +190,19 @@ export default function Game2048() {
           <p style={{ color: theme.ui.text.secondary }}>Use arrow keys to move tiles. When two tiles with the same number touch, they merge into one!</p>
         </div>
         
-        {/* Agent Controls */}
-        <div className="mt-6">
-          <AgentControls onMove={handleAgentMove} getGameState={getGameState} />
-        </div>
-        
-        {/* Try Classic Mode CTA */}
+        {/* Try Agent Mode CTA */}
         <div className="mt-8 text-center">
           <Link 
-            href="/play" 
+            href="/agent" 
             className="inline-flex items-center text-sm font-medium transition-colors"
             style={{ color: theme.ui.accent }}
             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            🎮 Try Classic Mode →
+            🤖 Try Agent Mode →
           </Link>
         </div>
       </div>
-      
-      {/* Debug Overlay */}
-      <DebugOverlay
-        gameState={debugGameState}
-        animationState={debugAnimationState}
-        gameRef={controllerRef}
-      />
     </div>
   );
 }
