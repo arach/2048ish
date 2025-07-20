@@ -16,9 +16,9 @@ const nextConfig: NextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
-  // If deploying to a subdirectory on GitHub Pages, uncomment and adjust:
-  // basePath: '/2048ish',
-  // assetPrefix: '/2048ish/',
+  // Configure for GitHub Pages deployment
+  basePath: '/2048ish',
+  assetPrefix: '/2048ish',
 };
 
 export default nextConfig;
