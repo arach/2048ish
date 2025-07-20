@@ -28,10 +28,10 @@ export interface RenderConfig {
 
 export const defaultConfig: RenderConfig = {
   gridSize: 4,
-  cellSize: 100,
-  cellGap: 10,
+  cellSize: 110,
+  cellGap: 12,
   borderRadius: 6,
-  fontSize: 48,
+  fontSize: 52,
   animationDuration: 150,
   animationStyle: 'playful',
   easingFunction: 'ease-in-out',
@@ -69,8 +69,6 @@ export class CanvasRenderer {
   private ctx: CanvasRenderingContext2D;
   private config: RenderConfig;
   private animationFrameId: number | null = null;
-  private debugMode: boolean = false;
-  private tileStates: Map<string, 'new' | 'merged' | 'moved'> = new Map();
   // Pre-computed top-left pixel positions for each grid cell – avoids recomputing every frame
   private cellPositions: { x: number; y: number }[][] = [];
 
@@ -389,14 +387,12 @@ export class CanvasRenderer {
 
     let scale: number;
     if (animationStyle === 'minimal') {
-      // Minimal: A subtle pulse that peaks at the halfway point.
+      // Minimal: A subtle but noticeable pulse
       scale = 1 + 0.25 * Math.sin(t * Math.PI);
     } else {
-      // Playful: A more pronounced pulse that feels like a "pop" but is
-      // synchronized with the move's duration. The main visual effect
-      // is spread across the entire animation timeline.
+      // Playful: Satisfying pop that feels just right
       const pulse = Math.sin(t * Math.PI);
-      scale = 1 + 0.4 * pulse; // A larger pulse than minimal style.
+      scale = 1 + 0.45 * pulse; // Sweet spot - noticeable but not overwhelming
     }
 
     const { x, y } = this.getCellPosition(animation.position[0], animation.position[1]);

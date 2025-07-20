@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameController } from '../game/gameController';
 import { DebugOverlay } from './debug/DebugOverlay';
+import { NavBar } from './NavBar';
+import { theme } from '../theme/colors';
 
 export default function Game2048() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -13,9 +15,7 @@ export default function Game2048() {
   const [hasWon, setHasWon] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const [animationMode, setAnimationMode] = useState<'minimal' | 'playful'>('playful');
-  const [animationTest, setAnimationTest] = useState(false);
-  const [easingFunction, setEasingFunction] = useState<'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'cubic' | 'elastic' | 'bounce'>('ease-in-out');
+  const [animationMode] = useState<'minimal' | 'playful'>('playful');
   
   // Debug state
   const [debugGameState, setDebugGameState] = useState<any>(null);
@@ -23,7 +23,7 @@ export default function Game2048() {
     duration: 150,
     baseDuration: 150,
     style: animationMode,
-    easing: easingFunction,
+    easing: 'ease-in-out',
     activeCount: 0,
     isAnimating: false,
     lastAnimationTime: 0
@@ -41,13 +41,17 @@ export default function Game2048() {
     // Initialize game controller
     const controller = new GameController({
       canvas: canvasRef.current,
-      onScoreUpdate: setScore,
+      onScoreUpdate: (newScore) => {
+        setScore(newScore);
+        if (newScore > bestScore) {
+          setBestScore(newScore);
+          localStorage.setItem('2048-best-score', newScore.toString());
+        }
+      },
       onGameOver: () => setGameOver(true),
       onWin: () => setHasWon(true),
       animationStyle: animationMode,
-      // The base duration is now managed inside the controller
-      easingFunction: easingFunction,
-      testMode: animationTest
+      easingFunction: 'ease-in-out'
     });
 
     controllerRef.current = controller;
@@ -105,7 +109,7 @@ export default function Game2048() {
         duration: animState.duration,
         baseDuration: animState.baseDuration,
         style: animationMode,
-        easing: easingFunction,
+        easing: 'ease-in-out',
         activeCount: animState.activeCount,
         isAnimating: animState.isAnimating,
         lastAnimationTime: animState.lastAnimationTime
@@ -116,7 +120,7 @@ export default function Game2048() {
         duration: 150,
         baseDuration: 150,
         style: animationMode,
-        easing: easingFunction,
+        easing: 'ease-in-out',
         activeCount: 0,
         isAnimating: false,
         lastAnimationTime: 0
@@ -128,47 +132,15 @@ export default function Game2048() {
       if (unsubscribe) unsubscribe();
       controller.destroy();
     };
-  }, [bestScore, animationMode, animationTest, easingFunction]);
+  }, [bestScore, animationMode]);
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
       controllerRef.current.newGame();
       setGameOver(false);
       setHasWon(false);
-      setAnimationTest(false);
     }
   }, []);
-
-  const handleToggleAnimationDemo = useCallback(() => {
-    if (controllerRef.current) {
-      if (animationTest) {
-        // Exit demo mode - start a new game
-        setAnimationTest(false);
-        controllerRef.current.newGame();
-      } else {
-        // Enter demo mode with preset scenario
-        const demoState = {
-          states: [{
-            grid: [
-              [2, null, null, 2],     // Two 2s - will merge
-              [4, null, null, null],  // Single 4 - will just move
-              [null, null, null, null],
-              [null, null, null, null]
-            ],
-            score: 0,
-            isGameOver: false,
-            hasWon: false
-          }],
-          currentIndex: 0
-        };
-        
-        controllerRef.current.importState(JSON.stringify(demoState));
-        setAnimationTest(true);
-        setGameOver(false);
-        setHasWon(false);
-      }
-    }
-  }, [animationTest]);
 
   const handleUndo = useCallback(() => {
     if (controllerRef.current && controllerRef.current.undo()) {
@@ -182,202 +154,101 @@ export default function Game2048() {
     }
   }, []);
 
-  const handleExport = useCallback(() => {
-    if (controllerRef.current) {
-      const state = controllerRef.current.exportState();
-      const blob = new Blob([state], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = '2048-game-state.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  }, []);
-
-  const handleImport = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file && controllerRef.current) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const content = e.target?.result as string;
-          if (controllerRef.current?.importState(content)) {
-            setGameOver(false);
-            setHasWon(false);
-          } else {
-            alert('Invalid game state file');
-          }
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
-  }, []);
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="max-w-md w-full">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4" 
+         style={{ background: `linear-gradient(to bottom right, ${theme.background.gradient.from}, ${theme.background.gradient.to})` }}>
+      <div className="max-w-lg w-full">
+        {/* Header with logo and new game */}
         <div className="mb-6">
-          <h1 className="text-5xl font-bold text-gray-800 mb-4">2048</h1>
+          <NavBar onNewGame={handleNewGame} />
+        </div>
+        
+        {/* Score and Best below header */}
+        <div className="flex gap-3 mb-6">
+          <div className="rounded-lg px-5 py-3" style={{ 
+            backgroundColor: theme.ui.card.background,
+            boxShadow: `0 2px 4px ${theme.ui.card.shadow}`
+          }}>
+            <div className="text-xs uppercase tracking-wider font-medium" style={{ color: theme.ui.text.secondary }}>Score</div>
+            <div className="text-2xl font-bold" style={{ color: theme.ui.text.primary }}>{score.toLocaleString()}</div>
+          </div>
           
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-4">
-              <div className="bg-gray-700 text-white px-4 py-2 rounded">
-                <div className="text-xs uppercase tracking-wide">Score</div>
-                <div className="text-2xl font-bold">{score}</div>
-              </div>
-              <div className="bg-gray-700 text-white px-4 py-2 rounded">
-                <div className="text-xs uppercase tracking-wide">Best</div>
-                <div className="text-2xl font-bold">{bestScore}</div>
-              </div>
-            </div>
-            
-            <button
-              onClick={handleNewGame}
-              className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded transition-colors"
-            >
-              New Game
-            </button>
-          </div>
-
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={handleUndo}
-              disabled={!canUndo}
-              className={`flex-1 px-3 py-2 rounded font-medium transition-colors ${
-                canUndo
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              Undo
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={!canRedo}
-              className={`flex-1 px-3 py-2 rounded font-medium transition-colors ${
-                canRedo
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              Redo
-            </button>
-            <button
-              onClick={handleExport}
-              className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-medium transition-colors"
-            >
-              Export
-            </button>
-            <button
-              onClick={handleImport}
-              className="flex-1 bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded font-medium transition-colors"
-            >
-              Import
-            </button>
-          </div>
-
-          <div className="flex items-center justify-center gap-2 mb-4">
-            {!animationTest && (
-              <button
-                onClick={() => setAnimationMode(animationMode === 'minimal' ? 'playful' : 'minimal')}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded transition-colors text-sm"
-              >
-                Animation: {animationMode === 'minimal' ? '⚡ Minimal' : '🎮 Playful'}
-              </button>
-            )}
-            <button
-              onClick={handleToggleAnimationDemo}
-              className={`px-4 py-2 rounded transition-colors text-sm ${
-                animationTest 
-                  ? 'bg-red-600 hover:bg-red-700 text-white' 
-                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-              }`}
-            >
-              {animationTest ? '❌ Exit Demo Mode' : '🎯 Animation Demo'}
-            </button>
+          <div className="rounded-lg px-5 py-3" style={{ 
+            backgroundColor: theme.ui.card.background,
+            boxShadow: `0 2px 4px ${theme.ui.card.shadow}`
+          }}>
+            <div className="text-xs uppercase tracking-wider font-medium" style={{ color: theme.ui.text.secondary }}>Best</div>
+            <div className="text-2xl font-bold" style={{ color: theme.ui.text.primary }}>{bestScore.toLocaleString()}</div>
           </div>
         </div>
 
         <div className="relative">
           <canvas
             ref={canvasRef}
-            className="rounded-lg shadow-lg"
+            className="rounded-xl shadow-2xl"
             style={{ touchAction: 'none' }}
           />
           
           {(gameOver || hasWon) && (
-            <div className="absolute inset-0 bg-black bg-opacity-70 rounded-lg flex items-center justify-center">
+            <div className="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <div className="text-center text-white">
-                <h2 className="text-4xl font-bold mb-4">
-                  {hasWon ? 'You Win!' : 'Game Over!'}
+                <h2 className="text-5xl font-bold mb-6">
+                  {hasWon ? '🎉 You Win!' : 'Game Over'}
                 </h2>
+                <p className="text-xl mb-6 opacity-90">
+                  Score: {score.toLocaleString()}
+                </p>
                 <button
                   onClick={handleNewGame}
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded transition-colors"
+                  className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-150 text-lg"
                 >
-                  Try Again
+                  Play Again
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {animationTest && (
-          <div className="mt-4 p-4 bg-gray-200 rounded-lg">
-            <p className="font-semibold mb-3 text-green-600">🎯 Animation Demo Controls:</p>
-            
-            <div className="mb-3">
-              <span className="text-gray-700">Animation Style:</span>
-              <div className="flex gap-2 mt-1">
-                <button
-                  onClick={() => setAnimationMode('minimal')}
-                  className={`px-3 py-1 rounded text-sm ${animationMode === 'minimal' ? 'bg-blue-500 text-white' : 'bg-gray-300'}`}
-                >
-                  Minimal
-                </button>
-                <button
-                  onClick={() => setAnimationMode('playful')}
-                  className={`px-3 py-1 rounded text-sm ${animationMode === 'playful' ? 'bg-blue-500 text-white' : 'bg-gray-300'}`}
-                >
-                  Playful
-                </button>
-              </div>
-            </div>
-            
-            <div>
-              <span className="text-gray-700">Easing Function:</span>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {(['ease-in-out', 'ease-in', 'ease-out', 'linear', 'cubic', 'elastic', 'bounce'] as const).map(easing => (
-                  <button
-                    key={easing}
-                    onClick={() => setEasingFunction(easing)}
-                    className={`px-3 py-1 rounded text-sm ${easingFunction === easing ? 'bg-blue-500 text-white' : 'bg-gray-300'}`}
-                  >
-                    {easing}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <p className="mt-3 text-gray-600 text-sm">
-              Use arrow keys to see animations.
-            </p>
-          </div>
-        )}
-
-        <div className="mt-6 text-gray-600 text-sm">
-          {!animationTest && (
-            <>
-              <p className="font-semibold mb-2">How to play:</p>
-              <p>Use arrow keys or WASD to move tiles. Swipe on touch devices.</p>
-              <p>When two tiles with the same number touch, they merge into one!</p>
-            </>
-          )}
+        <div className="mt-6 flex justify-center items-center gap-2">
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="p-1.5 rounded-lg transition-all duration-150"
+            style={{
+              backgroundColor: canUndo ? theme.ui.button.secondary.background : theme.ui.button.secondary.disabled.background,
+              color: canUndo ? theme.ui.button.secondary.text : theme.ui.button.secondary.disabled.text,
+              cursor: canUndo ? 'pointer' : 'not-allowed'
+            }}
+            onMouseEnter={(e) => canUndo && (e.currentTarget.style.backgroundColor = theme.ui.button.secondary.hover)}
+            onMouseLeave={(e) => canUndo && (e.currentTarget.style.backgroundColor = theme.ui.button.secondary.background)}
+            title="Undo"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="p-1.5 rounded-lg transition-all duration-150"
+            style={{
+              backgroundColor: canRedo ? theme.ui.button.secondary.background : theme.ui.button.secondary.disabled.background,
+              color: canRedo ? theme.ui.button.secondary.text : theme.ui.button.secondary.disabled.text,
+              cursor: canRedo ? 'pointer' : 'not-allowed'
+            }}
+            onMouseEnter={(e) => canRedo && (e.currentTarget.style.backgroundColor = theme.ui.button.secondary.hover)}
+            onMouseLeave={(e) => canRedo && (e.currentTarget.style.backgroundColor = theme.ui.button.secondary.background)}
+            title="Redo"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="mt-4 text-center text-sm space-y-1">
+          <p className="font-semibold" style={{ color: theme.ui.text.primary }}>HOW TO PLAY</p>
+          <p style={{ color: theme.ui.text.secondary }}>Use arrow keys to move tiles. When two tiles with the same number touch, they merge into one!</p>
         </div>
       </div>
       
