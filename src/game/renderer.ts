@@ -1,5 +1,7 @@
 import { Grid, Cell, Move } from './logic';
 
+export type EasingFunction = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'cubic' | 'elastic' | 'bounce';
+
 export interface RenderConfig {
   gridSize: number;
   cellSize: number;
@@ -7,6 +9,8 @@ export interface RenderConfig {
   borderRadius: number;
   fontSize: number;
   animationDuration: number;
+  animationStyle?: 'minimal' | 'playful';
+  easingFunction?: EasingFunction;
   colors: {
     background: string;
     gridBackground: string;
@@ -25,7 +29,9 @@ export const defaultConfig: RenderConfig = {
   cellGap: 10,
   borderRadius: 6,
   fontSize: 48,
-  animationDuration: 150,
+  animationDuration: 200,
+  animationStyle: 'playful',
+  easingFunction: 'ease-in-out',
   colors: {
     background: '#faf8ef',
     gridBackground: '#bbada0',
@@ -86,7 +92,29 @@ export class CanvasRenderer {
   public render(grid: Grid, animations: AnimationState[] = []): void {
     this.clear();
     this.drawBackground();
-    this.drawGrid(grid);
+    
+    // Identify which positions are being animated
+    const movingFromPositions = new Set<string>();
+    const movingToPositions = new Set<string>();
+    const mergePositions = new Set<string>();
+    const appearPositions = new Set<string>();
+    
+    for (const animation of animations) {
+      if (animation.type === 'move') {
+        // Don't draw tiles at their source positions during move
+        movingFromPositions.add(`${animation.from[0]},${animation.from[1]}`);
+        // ALSO don't draw at destination - the animation will draw it there
+        movingToPositions.add(`${animation.to[0]},${animation.to[1]}`);
+      } else if (animation.type === 'merge') {
+        // Merge animations happen at destination after move completes
+        mergePositions.add(`${animation.position[0]},${animation.position[1]}`);
+      } else if (animation.type === 'appear') {
+        appearPositions.add(`${animation.position[0]},${animation.position[1]}`);
+      }
+    }
+    
+    // Draw grid, but skip tiles that are being animated
+    this.drawGrid(grid, movingFromPositions, movingToPositions, mergePositions, appearPositions);
     
     if (animations.length > 0) {
       this.drawAnimations(animations);
@@ -124,10 +152,38 @@ export class CanvasRenderer {
     }
   }
 
-  private drawGrid(grid: Grid): void {
+  private drawGrid(
+    grid: Grid, 
+    skipFromPositions: Set<string> = new Set(),
+    skipToPositions: Set<string> = new Set(), 
+    mergePositions: Set<string> = new Set(),
+    appearPositions: Set<string> = new Set()
+  ): void {
     for (let row = 0; row < grid.length; row++) {
       for (let col = 0; col < grid[row].length; col++) {
         const cell = grid[row][col];
+        const posKey = `${row},${col}`;
+        
+        // Skip if this position is being animated as a move source
+        if (skipFromPositions.has(posKey)) {
+          continue;
+        }
+        
+        // Skip if this position is a move destination (tile will be drawn by animation)
+        if (skipToPositions.has(posKey)) {
+          continue;
+        }
+        
+        // Skip merge destinations during merge animation (they'll be drawn by animation)
+        if (mergePositions.has(posKey)) {
+          continue;
+        }
+        
+        // Skip appear positions during appear animation
+        if (appearPositions.has(posKey)) {
+          continue;
+        }
+        
         if (cell !== null) {
           this.drawCell(row, col, cell);
         }
@@ -171,7 +227,7 @@ export class CanvasRenderer {
   }
 
   private drawMoveAnimation(animation: MoveAnimation): void {
-    const { cellSize, cellGap } = this.config;
+    const { cellSize, cellGap, animationStyle } = this.config;
     const progress = animation.progress;
     
     const fromX = animation.from[1] * cellSize + (animation.from[1] + 1) * cellGap;
@@ -182,19 +238,75 @@ export class CanvasRenderer {
     const x = fromX + (toX - fromX) * progress;
     const y = fromY + (toY - fromY) * progress;
     
-    const row = Math.round(y / (cellSize + cellGap));
-    const col = Math.round(x / (cellSize + cellGap));
+    // Draw at actual interpolated position instead of rounding
+    this.ctx.save();
+    this.ctx.translate(x, y);
     
-    this.drawCell(row, col, animation.value);
+    // Scale effect based on animation style
+    if (animationStyle === 'playful') {
+      // Add subtle scale effect during movement
+      const moveScale = 1 - 0.02 * Math.sin(progress * Math.PI);
+      this.ctx.scale(moveScale, moveScale);
+    }
+    // Minimal style: no scale effect during movement
+    
+    // Draw the cell at origin since we've already translated
+    const { borderRadius, fontSize, colors } = this.config;
+    
+    // Cell background
+    this.ctx.fillStyle = colors.cells[animation.value] || colors.cells[4096];
+    this.roundRect(0, 0, cellSize, cellSize, borderRadius);
+    this.ctx.fill();
+    
+    // Cell text
+    this.ctx.fillStyle = animation.value <= 4 ? colors.text.light : colors.text.dark;
+    this.ctx.font = `bold ${fontSize}px Arial`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(animation.value.toString(), cellSize / 2, cellSize / 2);
+    
+    this.ctx.restore();
   }
 
   private drawAppearAnimation(animation: AppearAnimation): void {
-    const scale = animation.progress;
+    const { animationStyle } = this.config;
+    const t = animation.progress;
+    
+    let scale: number;
+    if (animationStyle === 'minimal') {
+      // Simple fade in
+      scale = t;
+    } else {
+      // Playful: Bouncy appear effect with overshoot
+      scale = t < 0.5 
+        ? 2 * t * t * (3 * t - 1) // Accelerate with overshoot
+        : 1 + (1 - t) * 0.1 * Math.sin((1 - t) * Math.PI * 4); // Wobble at the end
+    }
+    
     this.drawCell(animation.position[0], animation.position[1], animation.value, scale);
   }
 
   private drawMergeAnimation(animation: MergeAnimation): void {
-    const scale = 1 + 0.1 * Math.sin(animation.progress * Math.PI);
+    const { animationStyle } = this.config;
+    const t = animation.progress;
+    
+    let scale: number;
+    if (animationStyle === 'minimal') {
+      // Minimal: More noticeable pulse
+      scale = 1 + 0.15 * Math.sin(t * Math.PI);
+    } else {
+      // Playful: Bigger pop effect with bounce
+      if (t < 0.5) {
+        // Growing phase - overshoot to 1.3x
+        scale = 1 + 0.6 * Math.sin(t * Math.PI);
+      } else {
+        // Settling phase with bounce
+        const settleT = (t - 0.5) * 2;
+        const bounce = Math.sin(settleT * Math.PI * 2) * (1 - settleT) * 0.1;
+        scale = 1.3 - 0.3 * settleT + bounce;
+      }
+    }
+    
     this.drawCell(animation.position[0], animation.position[1], animation.value, scale);
   }
 
@@ -319,7 +431,10 @@ export class AnimationController {
   }
 
   private easeInOut(t: number): number {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    // Smoother cubic easing
+    return t < 0.5 
+      ? 4 * t * t * t 
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   public stop(): void {

@@ -1,4 +1,4 @@
-import { GameState, Direction, initializeGame, makeMove, serializeGameState, deserializeGameState, RandomGenerator, DefaultRandomGenerator, SeededRandomGenerator } from './logic';
+import { GameState, Direction, initializeGame, makeMove, serializeGameState, deserializeGameState, RandomGenerator, DefaultRandomGenerator, SeededRandomGenerator, moveGrid, canMove, checkWin } from './logic';
 
 export interface GameHistory {
   states: GameState[];
@@ -71,6 +71,25 @@ export class GameManager {
     }
     
     // Add the new state to history
+    this.addState(newState);
+    return true;
+  }
+
+  public moveWithoutNewTile(direction: Direction): boolean {
+    const currentState = this.getCurrentState();
+    const { grid, points, hasChanged } = moveGrid(currentState.grid, direction);
+    
+    if (!hasChanged) {
+      return false;
+    }
+    
+    const newState: GameState = {
+      grid,
+      score: currentState.score + points,
+      isGameOver: !canMove(grid),
+      hasWon: currentState.hasWon || checkWin(grid)
+    };
+    
     this.addState(newState);
     return true;
   }

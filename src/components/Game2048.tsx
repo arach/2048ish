@@ -12,6 +12,9 @@ export default function Game2048() {
   const [hasWon, setHasWon] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [animationMode, setAnimationMode] = useState<'minimal' | 'playful'>('playful');
+  const [animationTest, setAnimationTest] = useState(false);
+  const [animationSpeed, setAnimationSpeed] = useState(200);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -25,6 +28,9 @@ export default function Game2048() {
     // Initialize game controller
     const controller = new GameController({
       canvas: canvasRef.current,
+      animationDuration: animationSpeed,
+      animationStyle: animationMode,
+      testMode: animationTest,
       onScoreUpdate: (newScore) => {
         setScore(newScore);
         if (newScore > bestScore) {
@@ -51,11 +57,39 @@ export default function Game2048() {
       clearInterval(interval);
       controller.destroy();
     };
-  }, [bestScore]);
+  }, [bestScore, animationMode, animationSpeed, animationTest]);
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
       controllerRef.current.newGame();
+      setGameOver(false);
+      setHasWon(false);
+      setAnimationTest(false);
+    }
+  }, []);
+
+  const handleAnimationTest = useCallback(() => {
+    if (controllerRef.current) {
+      // Set up a test scenario with:
+      // - Row 1: Two 2s that will merge when moved
+      // - Row 2: A single 4 that will just move
+      const testState = {
+        states: [{
+          grid: [
+            [2, null, null, 2],     // Two 2s - will merge
+            [4, null, null, null],  // Single 4 - will just move
+            [null, null, null, null],
+            [null, null, null, null]
+          ],
+          score: 0,
+          isGameOver: false,
+          hasWon: false
+        }],
+        currentIndex: 0
+      };
+      
+      controllerRef.current.importState(JSON.stringify(testState));
+      setAnimationTest(true);
       setGameOver(false);
       setHasWon(false);
     }
@@ -171,6 +205,27 @@ export default function Game2048() {
               Import
             </button>
           </div>
+
+          <div className="flex items-center justify-center gap-2 mb-4">
+            {!animationTest && (
+              <button
+                onClick={() => setAnimationMode(animationMode === 'minimal' ? 'playful' : 'minimal')}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded transition-colors text-sm"
+              >
+                Animation: {animationMode === 'minimal' ? '⚡ Minimal' : '🎮 Playful'}
+              </button>
+            )}
+            <button
+              onClick={handleAnimationTest}
+              className={`px-4 py-2 rounded transition-colors text-sm ${
+                animationTest 
+                  ? 'bg-red-600 hover:bg-red-700 text-white' 
+                  : 'bg-gray-600 hover:bg-gray-700 text-white'
+              }`}
+            >
+              {animationTest ? '❌ Exit Test Mode' : '🎯 Animation Test'}
+            </button>
+          </div>
         </div>
 
         <div className="relative">
@@ -197,10 +252,72 @@ export default function Game2048() {
           )}
         </div>
 
+        {animationTest && (
+          <div className="mt-4 p-4 bg-gray-200 rounded-lg">
+            <p className="font-semibold mb-3 text-green-600">🎯 Animation Test Controls:</p>
+            
+            <div className="mb-3">
+              <label className="block text-sm font-medium mb-1">
+                Animation Speed: {animationSpeed}ms
+              </label>
+              <input 
+                type="range" 
+                min="50" 
+                max="500" 
+                step="10"
+                value={animationSpeed}
+                onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>50ms (Fast)</span>
+                <span>250ms</span>
+                <span>500ms (Slow)</span>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium mb-2">Animation Style:</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAnimationMode('minimal')}
+                  className={`flex-1 px-3 py-2 rounded text-sm ${
+                    animationMode === 'minimal' 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                  }`}
+                >
+                  ⚡ Minimal
+                </button>
+                <button
+                  onClick={() => setAnimationMode('playful')}
+                  className={`flex-1 px-3 py-2 rounded text-sm ${
+                    animationMode === 'playful' 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                  }`}
+                >
+                  🎮 Playful
+                </button>
+              </div>
+            </div>
+
+            <div className="text-sm text-gray-600">
+              <p>• Use ← → arrows to slide tiles back and forth</p>
+              <p>• No new tiles will spawn in test mode</p>
+              <p>• Adjust speed and style to test animations</p>
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 text-gray-600 text-sm">
-          <p className="font-semibold mb-2">How to play:</p>
-          <p>Use arrow keys or WASD to move tiles. Swipe on touch devices.</p>
-          <p>When two tiles with the same number touch, they merge into one!</p>
+          {!animationTest && (
+            <>
+              <p className="font-semibold mb-2">How to play:</p>
+              <p>Use arrow keys or WASD to move tiles. Swipe on touch devices.</p>
+              <p>When two tiles with the same number touch, they merge into one!</p>
+            </>
+          )}
         </div>
       </div>
     </div>

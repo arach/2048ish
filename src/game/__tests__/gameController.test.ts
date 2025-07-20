@@ -357,6 +357,65 @@ describe('GameController Integration Tests', () => {
     });
   });
 
+  describe('animation grid state', () => {
+    it('should not show tiles at destination during animation', async () => {
+      const canvas = document.createElement('canvas');
+      const controller = new GameController({
+        canvas,
+        gridSize: 4,
+        animationDuration: 100,
+        testMode: true // No new tiles
+      });
+
+      // Set up a specific grid state
+      controller.importState(JSON.stringify({
+        states: [{
+          grid: [
+            [2, null, null, null],
+            [null, null, null, null],
+            [null, null, null, null],
+            [null, null, null, null]
+          ],
+          score: 0,
+          isGameOver: false,
+          hasWon: false
+        }],
+        currentIndex: 0
+      }));
+
+      // Take a snapshot before move
+      const beforeMove = controller.snapshot();
+
+      // Start move right
+      controller.simulateMove('right');
+
+      // Immediately take a snapshot (during animation start)
+      // The tile should still appear to be at the left during animation
+      const duringAnimation = controller.snapshot();
+      
+      // The snapshots should be similar during the early phase of animation
+      // (tile hasn't moved much yet)
+      expect(duringAnimation).toContain('data:image/png');
+
+      // Wait a bit then check mid-animation
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const midAnimation = controller.snapshot();
+      expect(midAnimation).toContain('data:image/png');
+
+      // Wait for animation to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Now the tile should be at the destination
+      const afterAnimation = controller.snapshot();
+      expect(afterAnimation).not.toBe(beforeMove);
+      
+      // Verify tile is at right position
+      const finalState = controller.getGameState();
+      expect(finalState.grid[0][3]).toBe(2);
+      expect(finalState.grid[0][0]).toBeNull();
+    });
+  });
+
   describe('cleanup', () => {
     it('should clean up resources on destroy', () => {
       const newController = new GameController({

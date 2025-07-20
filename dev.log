@@ -994,3 +994,78 @@ https://nextjs.org/docs/messages/module-not-found
 [2025-07-19T22:16:25.487Z] [LOG]  [32m[1m✓[22m[39m Compiled in 66ms
 [2025-07-19T22:16:36.133Z] [LOG]  [32m[1m✓[22m[39m Compiled in 42ms
 [2025-07-19T22:16:47.172Z] [LOG]  [32m[1m✓[22m[39m Compiled in 65ms
+[2025-07-19T22:32:11.991Z] [ERROR] {"name":"TurbopackInternalError","__NEXT_ERROR_CODE":"TurbopackInternalError"}
+[2025-07-19T22:39:50.119Z] [LOG]  [32m[1m✓[22m[39m Ready in 965ms
+[2025-07-19T22:39:54.630Z] [LOG]  [37m[1m○[22m[39m Compiling / ...
+[2025-07-19T22:39:57.066Z] [LOG]  [32m[1m✓[22m[39m Compiled / in 2.9s
+[2025-07-19T22:42:08.391Z] [LOG]  [32m[1m✓[22m[39m Compiled /favicon.ico in 179ms
+[2025-07-19T22:42:15.312Z] [LOG]  [32m[1m✓[22m[39m Compiled in 21ms
+[2025-07-19T22:42:41.854Z] [LOG]  [32m[1m✓[22m[39m Compiled in 22ms
+[2025-07-19T22:42:50.902Z] [LOG]  [32m[1m✓[22m[39m Compiled in 17ms
+[2025-07-19T22:43:05.937Z] [LOG]  [32m[1m✓[22m[39m Compiled in 14ms
+[2025-07-19T22:43:20.062Z] [LOG]  [32m[1m✓[22m[39m Compiled in 16ms
+[2025-07-19T22:43:46.473Z] [LOG]  [32m[1m✓[22m[39m Compiled in 15ms
+[2025-07-19T22:43:54.824Z] [LOG]  ✓ Ready in 922ms
+[2025-07-19T22:46:09.792Z] [LOG]  [32m[1m✓[22m[39m Compiled in 37ms
+[2025-07-19T22:46:27.181Z] [LOG]  [32m[1m✓[22m[39m Compiled in 15ms
+[2025-07-19T22:46:34.796Z] [LOG]  [32m[1m✓[22m[39m Compiled in 12ms
+[2025-07-19T22:46:41.912Z] [LOG]  [32m[1m✓[22m[39m Compiled in 22ms
+[2025-07-19T22:46:51.031Z] [LOG]  [32m[1m✓[22m[39m Compiled in 15ms
+[2025-07-19T22:46:58.004Z] [LOG]  [32m[1m✓[22m[39m Compiled in 12ms
+[2025-07-19T22:47:06.631Z] [LOG]  [32m[1m✓[22m[39m Compiled in 13ms
+[2025-07-19T22:48:48.727Z] [LOG]  [32m[1m✓[22m[39m Compiled in 20ms
+[2025-07-19T22:49:01.551Z] [LOG]  [32m[1m✓[22m[39m Compiled in 12ms
+[2025-07-19T22:49:08.240Z] [LOG]  [32m[1m✓[22m[39m Compiled in 11ms
+[2025-07-19T22:49:35.816Z] [LOG]  [32m[1m✓[22m[39m Compiled in 27ms
+[2025-07-19T22:49:58.698Z] [LOG]  [32m[1m✓[22m[39m Compiled in 11ms
+[2025-07-19T22:50:17.186Z] [LOG]  [32m[1m✓[22m[39m Compiled in 12ms
+[2025-07-19T22:50:42.589Z] [LOG]  [32m[1m✓[22m[39m Compiled in 21ms
+[2025-07-19T22:51:04.587Z] [LOG]  [32m[1m✓[22m[39m Compiled in 11ms
+[2025-07-19T22:51:16.156Z] [LOG]  [32m[1m✓[22m[39m Compiled in 13ms
+[2025-07-20T00:13:51.105Z] [LOG]  [32m[1m✓[22m[39m Compiled in 80ms
+[2025-07-20T00:14:01.971Z] [LOG]  [32m[1m✓[22m[39m Compiled in 15ms
+[2025-07-20T00:14:16.042Z] [LOG]  [32m[1m✓[22m[39m Compiled in 48ms
+[2025-07-20T00:14:28.568Z] [LOG]  [32m[1m✓[22m[39m Compiled in 40ms
+[2025-07-20T00:18:52.976Z] [LOG]  [32m[1m✓[22m[39m Compiled in 407ms
+[2025-07-20T00:18:53.013Z] [LOG]  [32m[1m✓[22m[39m Compiled in 0ms
+[2025-07-20T00:18:53.020Z] [LOG]  [32m[1m✓[22m[39m Compiled / in 106ms
+[2025-07-20T00:20:06.010Z] [LOG]  [32m[1m✓[22m[39m Ready in 1023ms
+[2025-07-20T00:20:06.522Z] [LOG]  [37m[1m○[22m[39m Compiling / ...
+[2025-07-20T00:20:07.537Z] [LOG]  [32m[1m✓[22m[39m Compiled / in 1516ms
+[2025-07-20T00:20:08.084Z] [LOG]  [32m[1m✓[22m[39m Compiled /favicon.ico in 161ms
+[2025-07-20T00:21:24.289Z] [LOG]  [32m[1m✓[22m[39m Compiled in 8ms
+[2025-07-20T00:21:37.239Z] [LOG]  [32m[1m✓[22m[39m Ready in 867ms
+[2025-07-20T00:21:40.304Z] [LOG]  [37m[1m○[22m[39m Compiling / ...
+[2025-07-20T00:21:41.325Z] [LOG]  [32m[1m✓[22m[39m Compiled / in 1521ms
+[2025-07-20T00:21:41.999Z] [LOG]  [32m[1m✓[22m[39m Compiled /favicon.ico in 157ms
+[2025-07-20T00:22:00.746Z] [LOG]  [32m[1m✓[22m[39m Compiled in 12ms
+[2025-07-20T00:22:19.416Z] [LOG]  [32m[1m✓[22m[39m Compiled in 40ms
+[2025-07-20T00:22:26.442Z] [LOG]  [32m[1m✓[22m[39m Compiled in 13ms
+[2025-07-20T00:22:35.198Z] [LOG]  [32m[1m✓[22m[39m Ready in 897ms
+[2025-07-20T00:22:38.536Z] [LOG]  [37m[1m○[22m[39m Compiling / ...
+[2025-07-20T00:22:39.938Z] [LOG]  [32m[1m✓[22m[39m Compiled / in 1904ms
+[2025-07-20T00:22:40.536Z] [LOG]  [32m[1m✓[22m[39m Compiled /favicon.ico in 168ms
+[2025-07-20T00:22:42.498Z] [LOG]  [32m[1m✓[22m[39m Compiled in 6ms
+[2025-07-20T00:23:35.657Z] [LOG]  [32m[1m✓[22m[39m Compiled in 19ms
+[2025-07-20T00:23:52.397Z] [LOG]  [32m[1m✓[22m[39m Compiled in 21ms
+[2025-07-20T00:23:59.054Z] [LOG]  ✓ Ready in 993ms
+[2025-07-20T00:24:22.224Z] [LOG]  [32m[1m✓[22m[39m Compiled / in 37ms
+[2025-07-20T00:26:31.713Z] [LOG]  [32m[1m✓[22m[39m Compiled in 70ms
+[2025-07-20T00:26:43.295Z] [LOG]  [32m[1m✓[22m[39m Compiled in 22ms
+[2025-07-20T00:27:00.857Z] [LOG]  [32m[1m✓[22m[39m Compiled in 23ms
+[2025-07-20T00:27:21.398Z] [LOG]  [32m[1m✓[22m[39m Compiled in 15ms
+[2025-07-20T00:28:27.496Z] [LOG]  [32m[1m✓[22m[39m Compiled in 43ms
+[2025-07-20T00:28:47.067Z] [LOG]  [32m[1m✓[22m[39m Compiled in 28ms
+[2025-07-20T00:29:02.596Z] [LOG]  [32m[1m✓[22m[39m Compiled in 22ms
+[2025-07-20T00:29:34.888Z] [LOG]  [32m[1m✓[22m[39m Compiled in 34ms
+[2025-07-20T00:31:06.171Z] [LOG]  [32m[1m✓[22m[39m Compiled in 93ms
+[2025-07-20T00:31:15.087Z] [LOG]  [32m[1m✓[22m[39m Compiled in 19ms
+[2025-07-20T00:32:03.569Z] [LOG]  [32m[1m✓[22m[39m Compiled in 35ms
+[2025-07-20T00:32:16.371Z] [LOG]  [32m[1m✓[22m[39m Compiled in 15ms
+[2025-07-20T00:32:25.219Z] [LOG]  [32m[1m✓[22m[39m Compiled in 12ms
+[2025-07-20T00:34:06.106Z] [LOG]  [32m[1m✓[22m[39m Compiled in 23ms
+[2025-07-20T00:34:22.603Z] [LOG]  [32m[1m✓[22m[39m Compiled in 31ms
+[2025-07-20T00:34:53.872Z] [LOG]  [32m[1m✓[22m[39m Compiled in 23ms
+[2025-07-20T00:35:26.762Z] [LOG]  [32m[1m✓[22m[39m Compiled in 37ms
+[2025-07-20T00:35:45.823Z] [LOG]  [32m[1m✓[22m[39m Compiled in 29ms
+[2025-07-20T00:35:59.361Z] [LOG]  [32m[1m✓[22m[39m Compiled in 26ms

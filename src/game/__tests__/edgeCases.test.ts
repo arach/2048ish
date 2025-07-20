@@ -9,7 +9,9 @@ import {
   initializeGame,
   getMaxTile,
   slideRowLeft,
-  SeededRandomGenerator
+  SeededRandomGenerator,
+  addRandomTile,
+  createEmptyGrid
 } from '../logic';
 
 describe('Edge Cases', () => {
@@ -125,7 +127,24 @@ describe('Edge Cases', () => {
     });
   });
 
-  describe('corner cases', () => {
+  describe('merge rules edge cases', () => {
+    it('should only merge the two farthest-forward tiles when three identical tiles slide together', () => {
+      // Critical test for the three-tile rule
+      const { row: leftResult, points: leftPoints } = slideRowLeft([2, 2, 2, null]);
+      expect(leftResult).toEqual([4, 2, null, null]); // First two merge
+      expect(leftPoints).toBe(4);
+
+      const { row: rightResult, points: rightPoints } = slideRowLeft([null, 2, 2, 2].reverse());
+      expect(rightResult.reverse()).toEqual([null, null, 2, 4]); // Last two merge when going right
+      expect(rightPoints).toBe(4);
+    });
+
+    it('should handle three tiles in different positions', () => {
+      const { row, points } = slideRowLeft([2, null, 2, 2]);
+      expect(row).toEqual([4, 2, null, null]); // Still only first two that collide merge
+      expect(points).toBe(4);
+    });
+
     it('should handle all tiles being the same value', () => {
       const uniformBoard: Grid = [
         [2, 2, 2, 2],
@@ -195,6 +214,75 @@ describe('Edge Cases', () => {
       const game2 = initializeGame(4, random2);
       
       expect(game1.grid).not.toEqual(game2.grid);
+    });
+  });
+
+  describe('tile spawning', () => {
+    it('should spawn only 2s and 4s', () => {
+      const random = new SeededRandomGenerator(12345);
+      const emptyGrid = createEmptyGrid();
+      
+      // Test multiple spawns
+      for (let i = 0; i < 20; i++) {
+        const { grid } = addRandomTile(emptyGrid, random);
+        const spawnedValue = grid.flat().find(v => v !== null);
+        expect([2, 4]).toContain(spawnedValue);
+      }
+    });
+
+    it('should spawn mostly 2s with reasonable probability', () => {
+      const random = new SeededRandomGenerator(12345);
+      let twos = 0;
+      let fours = 0;
+      
+      // Test 100 spawns - enough to catch major issues
+      for (let i = 0; i < 100; i++) {
+        const { grid } = addRandomTile(createEmptyGrid(), random);
+        const value = grid.flat().find(v => v !== null);
+        if (value === 2) twos++;
+        if (value === 4) fours++;
+      }
+      
+      // Should be roughly 90/10 split - allow reasonable variance
+      // At least 5x more 2s than 4s (would be 9x in perfect world)
+      expect(twos).toBeGreaterThan(fours * 5);
+      // But not more than 15x (to catch if it's always spawning 2s)
+      expect(twos).toBeLessThan(fours * 15);
+      
+      // Also check that we got some of each
+      expect(twos).toBeGreaterThan(0);
+      expect(fours).toBeGreaterThan(0);
+    });
+
+    it('should not spawn tiles when board is full', () => {
+      const fullBoard: Grid = [
+        [2, 4, 8, 16],
+        [32, 64, 128, 256],
+        [512, 1024, 2048, 4096],
+        [8192, 16384, 32768, 65536]
+      ];
+      
+      const { grid, position } = addRandomTile(fullBoard);
+      expect(position).toBeNull();
+      expect(grid).toEqual(fullBoard);
+    });
+
+    it('should spawn in empty cells only', () => {
+      const partialBoard: Grid = [
+        [2, null, 4, null],
+        [null, 8, null, 16],
+        [32, null, 64, null],
+        [null, 128, null, 256]
+      ];
+      
+      const { grid, position } = addRandomTile(partialBoard);
+      expect(position).not.toBeNull();
+      
+      if (position) {
+        const [row, col] = position;
+        expect(partialBoard[row][col]).toBeNull();
+        expect([2, 4]).toContain(grid[row][col]);
+      }
     });
   });
 

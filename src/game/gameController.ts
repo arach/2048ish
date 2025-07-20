@@ -7,9 +7,11 @@ export interface GameControllerConfig {
   canvas: HTMLCanvasElement;
   gridSize?: number;
   animationDuration?: number;
+  animationStyle?: 'minimal' | 'playful';
   onScoreUpdate?: (score: number) => void;
   onGameOver?: () => void;
   onWin?: () => void;
+  testMode?: boolean;  // When true, doesn't spawn new tiles
 }
 
 export class GameController {
@@ -26,7 +28,9 @@ export class GameController {
     
     // Initialize components
     this.gameManager = new GameManager({ gridSize: config.gridSize });
-    this.renderer = new CanvasRenderer(config.canvas);
+    this.renderer = new CanvasRenderer(config.canvas, {
+      animationStyle: config.animationStyle
+    });
     this.inputHandler = new InputHandler(config.canvas);
     
     // Set up animation controller
@@ -98,43 +102,57 @@ export class GameController {
     // Start animation
     this.isAnimating = true;
     
-    // Set up animations
+    // Set up animations with proper sequencing
+    const animDuration = this.config.animationDuration ?? 200;
+    
     for (const move of moveResult.moves) {
+      // Always add the move animation
+      this.animationController.addMoveAnimation(move);
+      
+      // If it's a merge, add merge animation that starts AFTER the move completes
       if (move.merged) {
-        this.animationController.addMergeAnimation(move.to, move.value);
-      } else {
-        this.animationController.addMoveAnimation(move);
+        setTimeout(() => {
+          this.animationController.addMergeAnimation(move.to, move.value);
+        }, animDuration); // Start merge effect only after move completes
       }
     }
     
-    // Execute the actual move
-    const moved = this.gameManager.move(direction);
+    // Execute the actual move to update game state
+    const moved = this.config.testMode 
+      ? this.gameManager.moveWithoutNewTile(direction)
+      : this.gameManager.move(direction);
     
-    if (moved) {
+    if (moved && !this.config.testMode) {
       // Get the new tile position
       const newState = this.gameManager.getCurrentState();
       const newTilePos = this.findNewTile(oldGrid, newState.grid);
       
       if (newTilePos) {
-        // Add appear animation for new tile
+        // Add appear animation for new tile after move completes
         setTimeout(() => {
           const value = newState.grid[newTilePos[0]][newTilePos[1]];
           if (value !== null) {
             this.animationController.addAppearAnimation(newTilePos, value);
           }
-        }, this.config.animationDuration ?? 150);
+        }, animDuration); // Start appear animation after move completes
       }
     }
     
     // Start animations
     this.animationController.start();
     
+    // Calculate total animation time based on sequence
+    // Move -> Merge/Appear -> Done
+    const totalAnimTime = moveResult.moves.some(m => m.merged) 
+      ? animDuration * 2  // Move + merge
+      : animDuration * 1.5; // Move + appear (appear is shorter)
+    
     // Schedule end of animation
     setTimeout(() => {
       this.isAnimating = false;
       this.render();
       this.processNextQueuedMove();
-    }, (this.config.animationDuration ?? 150) * 2);
+    }, totalAnimTime);
   }
 
   private getMoveResult(grid: Grid, direction: Direction): {
