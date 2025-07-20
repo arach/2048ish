@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameController } from '../game/gameController';
+import { DebugOverlay } from './debug/DebugOverlay';
 
 export default function Game2048() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -14,8 +15,18 @@ export default function Game2048() {
   const [canRedo, setCanRedo] = useState(false);
   const [animationMode, setAnimationMode] = useState<'minimal' | 'playful'>('playful');
   const [animationTest, setAnimationTest] = useState(false);
-  const [animationSpeed, setAnimationSpeed] = useState(200);
+  const [animationSpeed, setAnimationSpeed] = useState(125);
   const [easingFunction, setEasingFunction] = useState<'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'cubic' | 'elastic' | 'bounce'>('ease-in-out');
+  
+  // Debug state
+  const [debugGameState, setDebugGameState] = useState<any>(null);
+  const [debugAnimationState, setDebugAnimationState] = useState<any>({
+    duration: animationSpeed,
+    baseDuration: 125,
+    style: animationMode,
+    easing: easingFunction,
+    activeCount: 0
+  });
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -50,13 +61,61 @@ export default function Game2048() {
     const updateUndoRedo = () => {
       setCanUndo(controller.canUndo());
       setCanRedo(controller.canRedo());
+      
+      // Update debug states
+      if (controller.getGameState) {
+        const state = controller.getGameState();
+        const tileStatesMap = controller.getTileStates ? controller.getTileStates() : new Map();
+        const tileStatesObj = {};
+        
+        // Convert Map to object properly
+        if (tileStatesMap instanceof Map) {
+          tileStatesMap.forEach((value, key) => {
+            tileStatesObj[key] = value;
+          });
+        } else {
+          Object.assign(tileStatesObj, tileStatesMap);
+        }
+        
+        const moves = controller.getLastMoveInfo ? controller.getLastMoveInfo() : [];
+        
+        setDebugGameState({
+          ...state,
+          moves: controller.getStats?.()?.moves || 0,
+          maxTile: state.grid ? Math.max(...state.grid.flat().filter(Boolean)) : 0,
+          tileStates: tileStatesObj,
+          lastMoves: moves
+        });
+        
+        // Log for debugging
+        if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
+          console.log('Debug state update - Tile states:', tileStatesObj, 'Moves:', moves);
+        }
+      }
     };
 
     // Subscribe to state changes
-    const interval = setInterval(updateUndoRedo, 100);
+    // Update immediately and then periodically
+    updateUndoRedo();
+    const interval = setInterval(updateUndoRedo, 50);
+    
+    // Also subscribe to game state changes directly
+    const unsubscribe = controller.subscribeToGameState?.(() => {
+      updateUndoRedo();
+    });
+    
+    // Update animation state for debug
+    setDebugAnimationState({
+      duration: animationSpeed,
+      baseDuration: 125,
+      style: animationMode,
+      easing: easingFunction,
+      activeCount: 0
+    });
 
     return () => {
       clearInterval(interval);
+      if (unsubscribe) unsubscribe();
       controller.destroy();
     };
   }, [bestScore, animationMode, animationSpeed, animationTest, easingFunction]);
@@ -72,30 +131,34 @@ export default function Game2048() {
 
   const handleAnimationTest = useCallback(() => {
     if (controllerRef.current) {
-      // Set up a test scenario with:
-      // - Row 1: Two 2s that will merge when moved
-      // - Row 2: A single 4 that will just move
-      const testState = {
-        states: [{
-          grid: [
-            [2, null, null, 2],     // Two 2s - will merge
-            [4, null, null, null],  // Single 4 - will just move
-            [null, null, null, null],
-            [null, null, null, null]
-          ],
-          score: 0,
-          isGameOver: false,
-          hasWon: false
-        }],
-        currentIndex: 0
-      };
-      
-      controllerRef.current.importState(JSON.stringify(testState));
-      setAnimationTest(true);
-      setGameOver(false);
-      setHasWon(false);
+      if (animationTest) {
+        // Exit test mode - start a new game
+        setAnimationTest(false);
+        controllerRef.current.newGame();
+      } else {
+        // Enter test mode with test scenario
+        const testState = {
+          states: [{
+            grid: [
+              [2, null, null, 2],     // Two 2s - will merge
+              [4, null, null, null],  // Single 4 - will just move
+              [null, null, null, null],
+              [null, null, null, null]
+            ],
+            score: 0,
+            isGameOver: false,
+            hasWon: false
+          }],
+          currentIndex: 0
+        };
+        
+        controllerRef.current.importState(JSON.stringify(testState));
+        setAnimationTest(true);
+        setGameOver(false);
+        setHasWon(false);
+      }
     }
-  }, []);
+  }, [animationTest]);
 
   const handleUndo = useCallback(() => {
     if (controllerRef.current && controllerRef.current.undo()) {
@@ -367,6 +430,13 @@ export default function Game2048() {
           )}
         </div>
       </div>
+      
+      {/* Debug Overlay */}
+      <DebugOverlay
+        gameState={debugGameState}
+        animationState={debugAnimationState}
+        gameRef={controllerRef}
+      />
     </div>
   );
 }

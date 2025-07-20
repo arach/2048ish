@@ -61,18 +61,22 @@ export class GameManager {
     return this.history.states[this.history.currentIndex];
   }
 
-  public move(direction: Direction): boolean {
+  public move(direction: Direction): { success: boolean; moves: Move[]; newTilePosition: [number, number] | null } {
     const currentState = this.getCurrentState();
-    const newState = makeMove(currentState, direction, this.randomGenerator);
+    const result = makeMove(currentState, direction, this.randomGenerator);
     
-    // If the state didn't change, the move was invalid
-    if (newState === currentState) {
-      return false;
+    // If no moves happened, the move was invalid
+    if (result.moves.length === 0) {
+      return { success: false, moves: [], newTilePosition: null };
     }
+    
+    // Extract the game state parts for history
+    const { moves, newTilePosition, ...newState } = result;
     
     // Add the new state to history
     this.addState(newState);
-    return true;
+    
+    return { success: true, moves, newTilePosition };
   }
 
   public moveWithoutNewTile(direction: Direction): boolean {
@@ -159,6 +163,17 @@ export class GameManager {
     for (const listener of this.listeners) {
       listener(state);
     }
+  }
+  
+  public notifySubscribers(): void {
+    this.notifyListeners();
+  }
+  
+  public getHistory(): GameHistory {
+    return {
+      states: [...this.history.states],
+      currentIndex: this.history.currentIndex
+    };
   }
 
   public saveToStorage(): void {

@@ -31,7 +31,7 @@ export const defaultConfig: RenderConfig = {
   cellGap: 10,
   borderRadius: 6,
   fontSize: 48,
-  animationDuration: 200,
+  animationDuration: 125,
   animationStyle: 'playful',
   easingFunction: 'ease-in-out',
   moveEasing: 'cubic',
@@ -67,6 +67,8 @@ export class CanvasRenderer {
   private ctx: CanvasRenderingContext2D;
   private config: RenderConfig;
   private animationFrameId: number | null = null;
+  private debugMode: boolean = false;
+  private tileStates: Map<string, 'new' | 'merged' | 'moved'> = new Map();
 
   constructor(canvas: HTMLCanvasElement, config: Partial<RenderConfig> = {}) {
     this.canvas = canvas;
@@ -107,10 +109,10 @@ export class CanvasRenderer {
       if (animation.type === 'move') {
         // Don't draw tiles at their source positions during move
         movingFromPositions.add(`${animation.from[0]},${animation.from[1]}`);
-        // ALSO don't draw at destination - the animation will draw it there
+        // ALSO don't draw at destination during move - animation handles it
         movingToPositions.add(`${animation.to[0]},${animation.to[1]}`);
       } else if (animation.type === 'merge') {
-        // Merge animations happen at destination after move completes
+        // Merge animations replace the tile at destination
         mergePositions.add(`${animation.position[0]},${animation.position[1]}`);
       } else if (animation.type === 'appear') {
         appearPositions.add(`${animation.position[0]},${animation.position[1]}`);
@@ -159,7 +161,7 @@ export class CanvasRenderer {
   private drawGrid(
     grid: Grid, 
     skipFromPositions: Set<string> = new Set(),
-    skipToPositions: Set<string> = new Set(), 
+    skipToPositions: Set<string> = new Set(),
     mergePositions: Set<string> = new Set(),
     appearPositions: Set<string> = new Set()
   ): void {
@@ -173,12 +175,12 @@ export class CanvasRenderer {
           continue;
         }
         
-        // Skip if this position is a move destination (tile will be drawn by animation)
+        // Skip if this position is a move destination
         if (skipToPositions.has(posKey)) {
           continue;
         }
         
-        // Skip merge destinations during merge animation (they'll be drawn by animation)
+        // Skip merge positions during merge animation (they'll be drawn by animation)
         if (mergePositions.has(posKey)) {
           continue;
         }
@@ -208,6 +210,41 @@ export class CanvasRenderer {
     this.ctx.translate(-cellSize / 2, -cellSize / 2);
     this.roundRect(0, 0, cellSize, cellSize, borderRadius);
     this.ctx.fill();
+    
+    // Debug overlay if enabled
+    if (this.debugMode) {
+      const posKey = `${row},${col}`;
+      const tileState = this.tileStates.get(posKey);
+      
+      if (tileState) {
+        this.ctx.strokeStyle = tileState === 'new' ? '#4ade80' :     // green-400
+                               tileState === 'merged' ? '#a855f7' :  // purple-400
+                               '#3b82f6';                            // blue-400
+        this.ctx.lineWidth = 3;
+        this.roundRect(2, 2, cellSize - 4, cellSize - 4, borderRadius);
+        this.ctx.stroke();
+        
+        // Small indicator dot
+        const dotSize = 8;
+        this.ctx.fillStyle = this.ctx.strokeStyle;
+        this.ctx.beginPath();
+        this.ctx.arc(cellSize - dotSize, dotSize, dotSize / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      } else {
+        // Static tile (has value but no state)
+        this.ctx.strokeStyle = '#4b5563'; // gray-600
+        this.ctx.lineWidth = 1;
+        this.roundRect(2, 2, cellSize - 4, cellSize - 4, borderRadius);
+        this.ctx.stroke();
+        
+        // Small gray indicator dot
+        const dotSize = 6;
+        this.ctx.fillStyle = '#4b5563';
+        this.ctx.beginPath();
+        this.ctx.arc(cellSize - dotSize, dotSize, dotSize / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
     
     // Cell text
     this.ctx.fillStyle = value <= 4 ? colors.text.light : colors.text.dark;
@@ -296,18 +333,23 @@ export class CanvasRenderer {
     
     let scale: number;
     if (animationStyle === 'minimal') {
-      // Minimal: More noticeable pulse
-      scale = 1 + 0.15 * Math.sin(t * Math.PI);
+      // Minimal: Clean pulse effect
+      scale = 1 + 0.25 * Math.sin(t * Math.PI);
     } else {
-      // Playful: Bigger pop effect with bounce
-      if (t < 0.5) {
-        // Growing phase - overshoot to 1.3x
-        scale = 1 + 0.6 * Math.sin(t * Math.PI);
+      // Playful: More satisfying pop with better timing
+      if (t < 0.4) {
+        // Anticipation - slight shrink
+        const anticipateT = t / 0.4;
+        scale = 1 - 0.05 * Math.sin(anticipateT * Math.PI);
+      } else if (t < 0.7) {
+        // Pop phase - quick growth to 1.4x
+        const popT = (t - 0.4) / 0.3;
+        scale = 0.95 + 0.45 * Math.sin(popT * Math.PI * 0.5);
       } else {
-        // Settling phase with bounce
-        const settleT = (t - 0.5) * 2;
-        const bounce = Math.sin(settleT * Math.PI * 2) * (1 - settleT) * 0.1;
-        scale = 1.3 - 0.3 * settleT + bounce;
+        // Settle phase with gentle bounce
+        const settleT = (t - 0.7) / 0.3;
+        const bounce = Math.sin(settleT * Math.PI * 3) * (1 - settleT) * 0.08;
+        scale = 1.4 - 0.4 * settleT + bounce;
       }
     }
     
@@ -336,6 +378,17 @@ export class CanvasRenderer {
     return this.canvas;
   }
 
+  public setDebugMode(enabled: boolean, tileStates?: Map<string, 'new' | 'merged' | 'moved'>): void {
+    this.debugMode = enabled;
+    if (tileStates) {
+      this.tileStates = new Map(tileStates);
+    }
+  }
+  
+  public getDebugMode(): boolean {
+    return this.debugMode;
+  }
+  
   public destroy(): void {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
@@ -376,6 +429,7 @@ export class AnimationController {
   private easingFunction: EasingFunction;
   private moveEasing: EasingFunction;
   private mergeEasing: EasingFunction;
+  private isRunning: boolean = false;
 
   constructor(
     duration: number, 
@@ -423,7 +477,12 @@ export class AnimationController {
   }
 
   public start(): void {
+    // If already running and we have new animations, don't restart the timer
+    if (this.isRunning && this.animations.size > 0) {
+      return;
+    }
     this.startTime = performance.now();
+    this.isRunning = true;
     this.animate();
   }
 
@@ -443,9 +502,11 @@ export class AnimationController {
     
     if (progress < 1) {
       this.animationFrameId = requestAnimationFrame(() => this.animate());
+      this.isRunning = true;
     } else {
       this.animations.clear();
       this.onUpdate([]);
+      this.isRunning = false;
     }
   }
 
@@ -472,11 +533,18 @@ export class AnimationController {
           : 1 - Math.pow(-2 * t + 2, 4) / 2;
       
       case 'elastic':
-        // Gentler elastic effect for merges
+        // Satisfying elastic effect for merges
         if (t === 0 || t === 1) return t;
-        const p = 0.4; // Increased period for less nervousness
-        const amplitude = 0.7; // Reduced amplitude
-        return amplitude * Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
+        if (t < 0.5) {
+          // First half: ease in
+          return 0.5 * Math.pow(2 * t, 2);
+        } else {
+          // Second half: elastic bounce
+          const elasticT = (t - 0.5) * 2;
+          const p = 0.3;
+          const amplitude = 0.5;
+          return 0.5 + 0.5 * (1 + amplitude * Math.pow(2, -10 * elasticT) * Math.sin((elasticT - p / 4) * (2 * Math.PI) / p));
+        }
       
       case 'bounce':
         // Gentler bounce effect
@@ -515,5 +583,9 @@ export class AnimationController {
     }
     this.onUpdate(Array.from(this.animations.values()));
     this.stop();
+  }
+  
+  public setDuration(duration: number): void {
+    this.duration = duration;
   }
 }

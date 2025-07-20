@@ -1,0 +1,106 @@
+/* Debug toolbar animations */
+@keyframes debug-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes debug-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* Apply animations */
+.debug-toolbar-enter {
+  animation: debug-fade-in 0.3s ease-out;
+}
+
+.debug-pulse {
+  animation: debug-pulse 2s infinite;
+}
+
+/* Custom scrollbar for debug content */
+.debug-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.debug-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.debug-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.debug-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Custom slider styling */
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #3b82f6;
+  cursor: pointer;
+  border-radius: 50%;
+  margin-top: -4px;
+  transition: all 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: #60a5fa;
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #3b82f6;
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+  transition: all 0.2s;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  background: #60a5fa;
+  transform: scale(1.2);
+}
+
+/* Slider track with tick marks */
+.slider-container {
+  position: relative;
+}
+
+.slider-ticks {
+  position: absolute;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  pointer-events: none;
+}
+
+.slider-tick {
+  width: 1px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  position: relative;
+  top: -4px;
+}

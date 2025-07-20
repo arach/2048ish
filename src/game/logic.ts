@@ -298,14 +298,18 @@ export function checkWin(grid: Grid, winValue: number = 2048): boolean {
   return false;
 }
 
-export function makeMove(state: GameState, direction: Direction, random?: RandomGenerator): GameState {
+export function makeMove(state: GameState, direction: Direction, random?: RandomGenerator): GameState & { moves: Move[]; newTilePosition: [number, number] | null } {
   const { grid, moves, points, hasChanged } = moveGrid(state.grid, direction);
   
   if (!hasChanged) {
-    return state;
+    return {
+      ...state,
+      moves: [],
+      newTilePosition: null
+    };
   }
   
-  const { grid: newGrid } = addRandomTile(grid, random);
+  const { grid: newGrid, position: newTilePosition } = addRandomTile(grid, random);
   const hasWon = !state.hasWon && checkWin(newGrid);
   const isGameOver = !canMove(newGrid);
   
@@ -313,7 +317,9 @@ export function makeMove(state: GameState, direction: Direction, random?: Random
     grid: newGrid,
     score: state.score + points,
     hasWon: state.hasWon || hasWon,
-    isGameOver
+    isGameOver,
+    moves,
+    newTilePosition
   };
 }
 
