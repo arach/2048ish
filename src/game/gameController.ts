@@ -133,161 +133,90 @@ export class GameController {
     
     // Start animation
     this.isAnimating = true;
-    
-    // Clear working tile states but preserve debug states until we have new ones
-    this.tileStates.clear();
-    console.log('[GameController] Starting move', this.moveCount, 'cleared working tile states');
-    
-    // Build new debug states without clearing first
+
+    // Build debug states
     const newDebugTileStates = new Map<string, 'new' | 'merged' | 'moved'>();
-    
-    // First, identify positions where merges will happen
-    const mergePositions = new Map<string, number>(); // position -> count of tiles moving there
+    const mergePositions = new Map<string, number>();
     for (const move of moveResult.moves) {
       const toKey = `${move.to[0]},${move.to[1]}`;
       mergePositions.set(toKey, (mergePositions.get(toKey) || 0) + 1);
     }
-    
-    // Phase 1: Add all move animations and start them
-    for (const move of moveResult.moves) {
-      this.animationController.addMoveAnimation(move);
-      // Track moved tiles
-      const toKey = `${move.to[0]},${move.to[1]}`;
-      
-      // A position is "merged" only if multiple tiles are moving to it
-      const isMergeDestination = (mergePositions.get(toKey) || 0) > 1;
-      
-      this.tileStates.set(toKey, isMergeDestination ? 'merged' : 'moved');
-      // Add to new debug states
-      newDebugTileStates.set(toKey, isMergeDestination ? 'merged' : 'moved');
-      // Tracked tile state
-    }
-    
-    // Store the moves for reference
-    this.lastMoves = [...moveResult.moves];
-    const newDebugMoves = [...moveResult.moves];
-    
-    // Replace debug states atomically only after we have the new ones ready
-    if (this.hasCompletedFirstMove) {
-      // Replacing debug states
-      this.debugTileStates = newDebugTileStates;
-      this.debugMoves = newDebugMoves;
-    } else {
-      // First move - just add to existing (empty) map
-      newDebugTileStates.forEach((value, key) => {
-        this.debugTileStates.set(key, value);
-      });
-      this.debugMoves = newDebugMoves;
-      // First move - setting debug moves
-    }
-    // Move complete - debug states updated
-    
-    // Update the renderer with the new debug states if debug mode is enabled
-    if (this.renderer.getDebugMode && this.renderer.getDebugMode()) {
-      this.renderer.setDebugMode(true, this.debugTileStates);
-    }
-    
-    // Update the renderer with the new debug states
-    this.render();
-    
-    this.animationController.start();
-    
-    // Collect merge positions for phase 2
+
     const merges = moveResult.moves.filter(m => m.merged);
     const hasMerges = merges.length > 0;
-    
-    // Store the old grid for comparison after move
-    const previewGrid = [...oldGrid.map(row => [...row])];
-    
-    // Apply the move to preview grid to know where new tile will be
-    let willMove = false;
-    if (moveResult.hasChanged) {
-      // Simulate the move to know what will happen
-      willMove = true;
+
+    // --- Animation Phase 1: Move Tiles ---
+    // First, run all the move animations.
+    for (const move of moveResult.moves) {
+      this.animationController.addMoveAnimation(move);
+      const toKey = `${move.to[0]},${move.to[1]}`;
+      const isMergeDestination = (mergePositions.get(toKey) || 0) > 1;
+      const state = isMergeDestination ? 'merged' : 'moved';
+      this.tileStates.set(toKey, state);
+      newDebugTileStates.set(toKey, state);
     }
     
-    // Helper function to get current animation duration dynamically
-    const getCurrentAnimDuration = () => this.config.animationDuration ?? this.baseAnimationDuration;
-    
-    // Animation sequence timing
-    const animDuration = getCurrentAnimDuration();
-    const newTileDelay = 50; // Small delay before new tile appears
-    
-    // Ensure AnimationController has the current duration
-    this.animationController.setDuration(animDuration);
-    
-    // Phase 1: Move animations (already started above)
-    // Phase 2: Game state update and merge animations
-    setTimeout(() => {
-      // Execute the actual move to update game state
-      let gameMoveResult;
-      if (this.config.testMode) {
-        const moved = this.gameManager.moveWithoutNewTile(direction);
-        gameMoveResult = { success: moved, moves: [], newTilePosition: null };
-      } else {
-        gameMoveResult = this.gameManager.move(direction);
-      }
+    // Update debug state and last moves
+    this.debugTileStates = newDebugTileStates;
+    this.lastMoves = [...moveResult.moves];
+    this.debugMoves = [...moveResult.moves];
+    if (this.renderer.getDebugMode()) {
+      this.renderer.setDebugMode(true, this.debugTileStates);
+    }
+
+    // Start Phase 1. When it completes, the onComplete callback will trigger Phase 2.
+    this.animationController.start(() => {
       
-      // Start merge animations if any
-      if (hasMerges) {
-        // Ensure AnimationController has the current duration for merge phase
-        this.animationController.setDuration(animDuration);
-        for (const move of merges) {
-          this.animationController.addMergeAnimation(move.to, move.value);
-        }
-        this.animationController.start();
-      }
-      
-      // Phase 3: New tile animation (if spawned)
-      if (gameMoveResult.success && gameMoveResult.newTilePosition) {
-        const newState = this.gameManager.getCurrentState();
-        const [row, col] = gameMoveResult.newTilePosition;
-        const value = newState.grid[row][col]!;
+      const MERGE_DELAY = 75; // ms to wait before starting the pop animation.
+
+      // After a short delay to let the move "settle", update the state and start results animations.
+      setTimeout(() => {
+        // Now that moves have landed, update the actual game state.
+        const gameMoveResult = this.gameManager.move(direction);
         
-        this.pendingNewTile = { pos: gameMoveResult.newTilePosition, value };
-        
-        // Schedule new tile animation
-        setTimeout(() => {
-          if (this.pendingNewTile) {
-            // Ensure AnimationController has the current duration for appear phase
-            this.animationController.setDuration(animDuration);
-            this.animationController.addAppearAnimation(
-              this.pendingNewTile.pos, 
-              this.pendingNewTile.value
-            );
-            this.animationController.start();
-            
-            // Track new tile state
-            const newKey = `${this.pendingNewTile.pos[0]},${this.pendingNewTile.pos[1]}`;
-            this.tileStates.set(newKey, 'new');
-            this.debugTileStates.set(newKey, 'new');
-            
-            this.pendingNewTile = null;
-            
-            // Update renderer and notify subscribers
-            if (this.renderer.getDebugMode && this.renderer.getDebugMode()) {
-              this.renderer.setDebugMode(true, this.debugTileStates);
-            }
-            this.render();
-            this.gameManager.notifySubscribers();
+        let hasSecondaryAnimations = false;
+
+        // If there were merges, add merge animations for the new values.
+        if (hasMerges) {
+          hasSecondaryAnimations = true;
+          for (const move of merges) {
+            // move.value now contains the original value, so we need to double it for the merge
+            this.animationController.addMergeAnimation(move.to, move.value * 2);
           }
-        }, hasMerges ? animDuration + newTileDelay : newTileDelay);
-      }
-    }, animDuration);
-    
-    // Calculate total animation time
-    let totalTime = animDuration; // Phase 1: Move
-    if (hasMerges) totalTime += animDuration; // Phase 2: Merge
-    if (willMove && !this.config.testMode) totalTime += newTileDelay + animDuration; // Phase 3: New tile
-    
-    // Schedule animation completion
-    setTimeout(() => {
-      this.isAnimating = false;
-      this.hasCompletedFirstMove = true;
-      this.render();
-      this.forceDebugRefresh();
-      this.processNextQueuedMove();
-    }, totalTime);
+        }
+
+        // If a new tile spawned, add its appear animation.
+        if (gameMoveResult.success && gameMoveResult.newTilePosition) {
+          hasSecondaryAnimations = true;
+          const [row, col] = gameMoveResult.newTilePosition;
+          const value = this.gameManager.getCurrentState().grid[row][col]!;
+          this.animationController.addAppearAnimation([row, col], value);
+          
+          const newKey = `${row},${col}`;
+          this.tileStates.set(newKey, 'new');
+          this.debugTileStates.set(newKey, 'new');
+        }
+        
+        this.gameManager.notifySubscribers();
+
+        // If there are result animations, start them. The first frame will render the new state.
+        // Otherwise, render the final state and finalize the move.
+        if (hasSecondaryAnimations) {
+          this.animationController.start(() => this.finalizeMove());
+        } else {
+          this.render(); // Manually render final state if no new animations.
+          this.finalizeMove();
+        }
+      }, MERGE_DELAY);
+    });
+  }
+
+  private finalizeMove(): void {
+    this.isAnimating = false;
+    this.hasCompletedFirstMove = true;
+    this.render(); // Final render to ensure grid is in its end state
+    this.forceDebugRefresh();
+    this.processNextQueuedMove();
   }
 
   private getMoveResult(grid: Grid, direction: Direction): {
@@ -320,7 +249,7 @@ export class GameController {
       this.renderer.setDebugMode(debugMode, this.debugTileStates);
       // Only log when there are states to report
       if (this.debugTileStates.size > 0) {
-        console.log('[GameController] render() - Debug mode:', debugMode, 'Debug states:', this.debugTileStates.size);
+        // console.log('[GameController] render() - Debug mode:', debugMode, 'Debug states:', this.debugTileStates.size);
       }
     }
   }
@@ -335,7 +264,6 @@ export class GameController {
     this.debugMoves = [];
     this.hasCompletedFirstMove = false;
     this.moveCount = 0;
-    console.log('[GameController] New game started, reset all tracking');
     this.gameManager.newGame();
   }
 

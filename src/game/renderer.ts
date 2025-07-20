@@ -178,8 +178,13 @@ export class CanvasRenderer {
       if (animation.type === 'move') {
         // Don't draw tiles at their source positions during move
         movingFromPositions.add(`${animation.from[0]},${animation.from[1]}`);
-        // ALSO don't draw at destination during move - animation handles it
-        movingToPositions.add(`${animation.to[0]},${animation.to[1]}`);
+
+        // For a normal move into an empty space, we hide the destination cell
+        // to let the animation draw the tile. For a merge, the destination
+        // tile must remain visible until the merge "pop" animation begins.
+        if (!animation.merged) {
+          movingToPositions.add(`${animation.to[0]},${animation.to[1]}`);
+        }
       } else if (animation.type === 'merge') {
         // Merge animations replace the tile at destination
         mergePositions.add(`${animation.position[0]},${animation.position[1]}`);
@@ -384,19 +389,14 @@ export class CanvasRenderer {
 
     let scale: number;
     if (animationStyle === 'minimal') {
+      // Minimal: A subtle pulse that peaks at the halfway point.
       scale = 1 + 0.25 * Math.sin(t * Math.PI);
     } else {
-      if (t < 0.4) {
-        const anticipateT = t / 0.4;
-        scale = 1 - 0.05 * Math.sin(anticipateT * Math.PI);
-      } else if (t < 0.7) {
-        const popT = (t - 0.4) / 0.3;
-        scale = 0.95 + 0.45 * Math.sin(popT * Math.PI * 0.5);
-      } else {
-        const settleT = (t - 0.7) / 0.3;
-        const bounce = Math.sin(settleT * Math.PI * 3) * (1 - settleT) * 0.08;
-        scale = 1.4 - 0.4 * settleT + bounce;
-      }
+      // Playful: A more pronounced pulse that feels like a "pop" but is
+      // synchronized with the move's duration. The main visual effect
+      // is spread across the entire animation timeline.
+      const pulse = Math.sin(t * Math.PI);
+      scale = 1 + 0.4 * pulse; // A larger pulse than minimal style.
     }
 
     const { x, y } = this.getCellPosition(animation.position[0], animation.position[1]);
@@ -451,6 +451,7 @@ export interface MoveAnimation {
   to: [number, number];
   value: number;
   progress: number;
+  merged?: boolean;
 }
 
 export interface AppearAnimation {
@@ -479,6 +480,7 @@ export class AnimationController {
   private moveEasing: EasingFunction;
   private mergeEasing: EasingFunction;
   private isRunning: boolean = false;
+  private onComplete: (() => void) | null = null;
 
   constructor(
     duration: number, 
@@ -491,7 +493,8 @@ export class AnimationController {
     this.onUpdate = onUpdate;
     this.easingFunction = easingFunction;
     this.moveEasing = moveEasing || 'cubic';
-    this.mergeEasing = mergeEasing || 'elastic';
+    // A merge should feel like the conclusion of a move, so its easing should match.
+    this.mergeEasing = mergeEasing || this.moveEasing;
   }
 
   public addMoveAnimation(move: Move): void {
@@ -501,8 +504,9 @@ export class AnimationController {
       from: move.from,
       to: move.to,
       value: move.value,
-      progress: 0
-    } as MoveAnimation);
+      progress: 0,
+      merged: move.merged,
+    });
   }
 
   public addAppearAnimation(position: [number, number], value: number): void {
@@ -525,11 +529,15 @@ export class AnimationController {
     } as MergeAnimation);
   }
 
-  public start(): void {
-    // If already running and we have new animations, don't restart the timer
-    if (this.isRunning && this.animations.size > 0) {
+  public start(onComplete?: () => void): void {
+    this.onComplete = onComplete || null;
+
+    // If already running, new animations will just be added to the current loop.
+    // The new onComplete will overwrite the old one.
+    if (this.isRunning) {
       return;
     }
+
     this.startTime = performance.now();
     this.isRunning = true;
     this.animate();
@@ -553,9 +561,16 @@ export class AnimationController {
       this.animationFrameId = requestAnimationFrame(() => this.animate());
       this.isRunning = true;
     } else {
+      const callback = this.onComplete;
       this.animations.clear();
-      this.onUpdate([]);
+      // Don't call onUpdate with empty animations - this causes a flash
+      // The callback will handle the next render
       this.isRunning = false;
+      this.onComplete = null;
+
+      if (callback) {
+        callback();
+      }
     }
   }
 
@@ -624,6 +639,7 @@ export class AnimationController {
       this.animationFrameId = null;
     }
     this.animations.clear();
+    this.onComplete = null;
   }
 
   public forceComplete(): void {

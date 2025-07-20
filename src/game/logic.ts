@@ -129,21 +129,39 @@ export function slideRowLeft(row: Cell[]): { row: Cell[]; moves: Move[]; points:
     result.push(null as any);
   }
   
-  // Track moves
-  let resultIndex = 0;
-  for (let originalIndex = 0; originalIndex < row.length; originalIndex++) {
-    if (row[originalIndex] !== null) {
-      if (resultIndex < result.length && result[resultIndex] !== null) {
-        if (originalIndex !== resultIndex || row[originalIndex] !== result[resultIndex]) {
-          moves.push({
-            from: [0, originalIndex],
-            to: [0, resultIndex],
-            value: result[resultIndex] as number,
-            merged: row[originalIndex] !== result[resultIndex]
-          });
-        }
-        resultIndex++;
+  // Track moves - we need to track ALL tiles that moved, including those that merge
+  const originalNonNull: Array<{value: number, index: number}> = [];
+  for (let i = 0; i < row.length; i++) {
+    if (row[i] !== null) {
+      originalNonNull.push({value: row[i] as number, index: i});
+    }
+  }
+  
+  // Now figure out where each original tile ended up
+  let mergeIndex = 0;
+  for (let i = 0; i < originalNonNull.length; i++) {
+    const original = originalNonNull[i];
+    
+    // Skip if this was the second tile in a merge (it was set to 0)
+    if (i > 0 && merged[i - 1] && originalNonNull[i - 1].value === original.value) {
+      // This tile merged with the previous one
+      moves.push({
+        from: [0, original.index],
+        to: [0, mergeIndex - 1],  // Same position as the tile it merged with
+        value: original.value,
+        merged: true
+      });
+    } else {
+      // This tile either moved normally or was the first in a merge
+      if (original.index !== mergeIndex || (merged[i] && i < originalNonNull.length - 1)) {
+        moves.push({
+          from: [0, original.index],
+          to: [0, mergeIndex],
+          value: original.value,
+          merged: merged[i]
+        });
       }
+      mergeIndex++;
     }
   }
   
