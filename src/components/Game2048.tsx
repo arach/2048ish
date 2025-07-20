@@ -15,17 +15,18 @@ export default function Game2048() {
   const [canRedo, setCanRedo] = useState(false);
   const [animationMode, setAnimationMode] = useState<'minimal' | 'playful'>('playful');
   const [animationTest, setAnimationTest] = useState(false);
-  const [animationSpeed, setAnimationSpeed] = useState(125);
   const [easingFunction, setEasingFunction] = useState<'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'cubic' | 'elastic' | 'bounce'>('ease-in-out');
   
   // Debug state
   const [debugGameState, setDebugGameState] = useState<any>(null);
   const [debugAnimationState, setDebugAnimationState] = useState<any>({
-    duration: animationSpeed,
-    baseDuration: 125,
+    duration: 150,
+    baseDuration: 150,
     style: animationMode,
     easing: easingFunction,
-    activeCount: 0
+    activeCount: 0,
+    isAnimating: false,
+    lastAnimationTime: 0
   });
 
   useEffect(() => {
@@ -40,19 +41,13 @@ export default function Game2048() {
     // Initialize game controller
     const controller = new GameController({
       canvas: canvasRef.current,
-      animationDuration: animationSpeed,
-      animationStyle: animationMode,
-      easingFunction: easingFunction,
-      testMode: animationTest,
-      onScoreUpdate: (newScore) => {
-        setScore(newScore);
-        if (newScore > bestScore) {
-          setBestScore(newScore);
-          localStorage.setItem('2048-best-score', newScore.toString());
-        }
-      },
+      onScoreUpdate: setScore,
       onGameOver: () => setGameOver(true),
-      onWin: () => setHasWon(true)
+      onWin: () => setHasWon(true),
+      animationStyle: animationMode,
+      // The base duration is now managed inside the controller
+      easingFunction: easingFunction,
+      testMode: animationTest
     });
 
     controllerRef.current = controller;
@@ -104,19 +99,36 @@ export default function Game2048() {
     });
     
     // Update animation state for debug
-    setDebugAnimationState({
-      duration: animationSpeed,
-      baseDuration: 150,
-      style: animationMode,
-      easing: easingFunction,
-      activeCount: 0
-    });
+    if (controller.getAnimationState) {
+      const animState = controller.getAnimationState();
+      setDebugAnimationState({
+        duration: animState.duration,
+        baseDuration: animState.baseDuration,
+        style: animationMode,
+        easing: easingFunction,
+        activeCount: animState.activeCount,
+        isAnimating: animState.isAnimating,
+        lastAnimationTime: animState.lastAnimationTime
+      });
+      console.log('[Game2048] Debug - Animation state:', debugAnimationState);
+    } else {
+      setDebugAnimationState({
+        duration: 150,
+        baseDuration: 150,
+        style: animationMode,
+        easing: easingFunction,
+        activeCount: 0,
+        isAnimating: false,
+        lastAnimationTime: 0
+      });
+      console.log('[Game2048] Debug - Animation state (else):', debugAnimationState);
+    }
 
     return () => {
       if (unsubscribe) unsubscribe();
       controller.destroy();
     };
-  }, [bestScore, animationMode, animationSpeed, animationTest, easingFunction]);
+  }, [bestScore, animationMode, animationTest, easingFunction]);
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
@@ -127,15 +139,15 @@ export default function Game2048() {
     }
   }, []);
 
-  const handleAnimationTest = useCallback(() => {
+  const handleToggleAnimationDemo = useCallback(() => {
     if (controllerRef.current) {
       if (animationTest) {
-        // Exit test mode - start a new game
+        // Exit demo mode - start a new game
         setAnimationTest(false);
         controllerRef.current.newGame();
       } else {
-        // Enter test mode with test scenario
-        const testState = {
+        // Enter demo mode with preset scenario
+        const demoState = {
           states: [{
             grid: [
               [2, null, null, 2],     // Two 2s - will merge
@@ -150,7 +162,7 @@ export default function Game2048() {
           currentIndex: 0
         };
         
-        controllerRef.current.importState(JSON.stringify(testState));
+        controllerRef.current.importState(JSON.stringify(demoState));
         setAnimationTest(true);
         setGameOver(false);
         setHasWon(false);
@@ -279,14 +291,14 @@ export default function Game2048() {
               </button>
             )}
             <button
-              onClick={handleAnimationTest}
+              onClick={handleToggleAnimationDemo}
               className={`px-4 py-2 rounded transition-colors text-sm ${
                 animationTest 
                   ? 'bg-red-600 hover:bg-red-700 text-white' 
                   : 'bg-gray-600 hover:bg-gray-700 text-white'
               }`}
             >
-              {animationTest ? '❌ Exit Test Mode' : '🎯 Animation Test'}
+              {animationTest ? '❌ Exit Demo Mode' : '🎯 Animation Demo'}
             </button>
           </div>
         </div>
@@ -317,104 +329,44 @@ export default function Game2048() {
 
         {animationTest && (
           <div className="mt-4 p-4 bg-gray-200 rounded-lg">
-            <p className="font-semibold mb-3 text-green-600">🎯 Animation Test Controls:</p>
+            <p className="font-semibold mb-3 text-green-600">🎯 Animation Demo Controls:</p>
             
             <div className="mb-3">
-              <label className="block text-sm font-medium mb-1">
-                Animation Speed: {animationSpeed}ms
-              </label>
-              <input 
-                type="range" 
-                min="50" 
-                max="500" 
-                step="10"
-                value={animationSpeed}
-                onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>50ms (Fast)</span>
-                <span>250ms</span>
-                <span>500ms (Slow)</span>
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <label className="block text-sm font-medium mb-2">Animation Style:</label>
-              <div className="flex gap-2">
+              <span className="text-gray-700">Animation Style:</span>
+              <div className="flex gap-2 mt-1">
                 <button
                   onClick={() => setAnimationMode('minimal')}
-                  className={`flex-1 px-3 py-2 rounded text-sm ${
-                    animationMode === 'minimal' 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                  }`}
+                  className={`px-3 py-1 rounded text-sm ${animationMode === 'minimal' ? 'bg-blue-500 text-white' : 'bg-gray-300'}`}
                 >
-                  ⚡ Minimal
+                  Minimal
                 </button>
                 <button
                   onClick={() => setAnimationMode('playful')}
-                  className={`flex-1 px-3 py-2 rounded text-sm ${
-                    animationMode === 'playful' 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                  }`}
+                  className={`px-3 py-1 rounded text-sm ${animationMode === 'playful' ? 'bg-blue-500 text-white' : 'bg-gray-300'}`}
                 >
-                  🎮 Playful
+                  Playful
                 </button>
               </div>
             </div>
-
-            <div className="mb-3">
-              <label className="block text-sm font-medium mb-2">Easing Function:</label>
-              <select 
-                value={easingFunction}
-                onChange={(e) => setEasingFunction(e.target.value as any)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-              >
-                <option value="linear">Linear</option>
-                <option value="ease-in">Ease In (slow start)</option>
-                <option value="ease-out">Ease Out (slow end)</option>
-                <option value="ease-in-out">Ease In-Out (smooth)</option>
-                <option value="cubic">Cubic (snappy)</option>
-                <option value="elastic">Elastic (bouncy)</option>
-                <option value="bounce">Bounce (playful)</option>
-              </select>
+            
+            <div>
+              <span className="text-gray-700">Easing Function:</span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {(['ease-in-out', 'ease-in', 'ease-out', 'linear', 'cubic', 'elastic', 'bounce'] as const).map(easing => (
+                  <button
+                    key={easing}
+                    onClick={() => setEasingFunction(easing)}
+                    className={`px-3 py-1 rounded text-sm ${easingFunction === easing ? 'bg-blue-500 text-white' : 'bg-gray-300'}`}
+                  >
+                    {easing}
+                  </button>
+                ))}
+              </div>
             </div>
-
-            <div className="mb-3">
-              <button
-                onClick={() => {
-                  // Reload the test scenario
-                  if (controllerRef.current) {
-                    const testState = {
-                      states: [{
-                        grid: [
-                          [2, null, null, 2],     // Two 2s - will merge
-                          [4, null, null, null],  // Single 4 - will just move
-                          [null, null, null, null],
-                          [null, null, null, null]
-                        ],
-                        score: 0,
-                        isGameOver: false,
-                        hasWon: false
-                      }],
-                      currentIndex: 0
-                    };
-                    controllerRef.current.importState(JSON.stringify(testState));
-                  }
-                }}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
-              >
-                🔄 Reset Test Scenario
-              </button>
-            </div>
-
-            <div className="text-sm text-gray-600">
-              <p>• Use ← → arrows to slide tiles back and forth</p>
-              <p>• No new tiles will spawn in test mode</p>
-              <p>• Adjust speed, style, and easing to test animations</p>
-            </div>
+            
+            <p className="mt-3 text-gray-600 text-sm">
+              Use arrow keys to see animations.
+            </p>
           </div>
         )}
 

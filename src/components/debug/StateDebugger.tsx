@@ -58,9 +58,8 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
   useEffect(() => {
     if (gameRef?.current) {
       // Apply saved slowdown
-      if (gameRef.current.setAnimationDuration && animationSlowdown !== 1) {
-        const baseDuration = animationState?.baseDuration || 150;
-        gameRef.current.setAnimationDuration(baseDuration * animationSlowdown);
+      if (gameRef.current.setDebugSlowdown && animationSlowdown !== 1) {
+        gameRef.current.setDebugSlowdown(animationSlowdown);
       }
       
       // Apply saved overlay setting
@@ -335,18 +334,35 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                     {gameState?.grid?.map((row: (number | null)[], rowIndex: number) => (
                       row.map((cell, colIndex) => {
                         const posKey = `${rowIndex},${colIndex}`;
-                        // Try to get tile states from gameState first, then from gameRef
+                        // Get tile states with improved fallback logic
                         let tileStates = gameState?.tileStates || {};
                         if (Object.keys(tileStates).length === 0 && gameRef?.current?.getTileStates) {
-                          const statesMap = gameRef.current.getTileStates();
-                          if (statesMap instanceof Map) {
-                            tileStates = Object.fromEntries(statesMap);
-                          } else {
-                            tileStates = statesMap || {};
+                          try {
+                            const statesMap = gameRef.current.getTileStates();
+                            if (statesMap instanceof Map) {
+                              tileStates = Object.fromEntries(statesMap);
+                            } else if (statesMap && typeof statesMap === 'object') {
+                              tileStates = statesMap;
+                            }
+                          } catch (error) {
+                            console.warn('[StateDebugger] Failed to get tile states:', error);
+                            tileStates = {};
                           }
                         }
                         const tileState = tileStates[posKey];
-                        const moveInfo = gameState?.lastMoves || lastMoveInfo || gameRef?.current?.getLastMoveInfo?.() || [];
+                        // Get move info with improved fallback logic
+                        let moveInfo = gameState?.lastMoves || lastMoveInfo || [];
+                        if (moveInfo.length === 0 && gameRef?.current?.getLastMoveInfo) {
+                          try {
+                            const lastMoves = gameRef.current.getLastMoveInfo();
+                            if (Array.isArray(lastMoves)) {
+                              moveInfo = lastMoves;
+                            }
+                          } catch (error) {
+                            console.warn('[StateDebugger] Failed to get last move info:', error);
+                            moveInfo = [];
+                          }
+                        }
                         
                         // Find if this tile moved here from somewhere
                         let moveData = null;
@@ -497,17 +513,32 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                       <div className="space-y-1 text-xs">
                         {(() => {
                           // Get moves from all sources and use the most recent non-empty one
-                          const moveInfo = gameState?.lastMoves || lastMoveInfo || gameRef?.current?.getLastMoveInfo?.() || [];
+                          let moveInfo = gameState?.lastMoves || lastMoveInfo || [];
+                          if (moveInfo.length === 0 && gameRef?.current?.getLastMoveInfo) {
+                            try {
+                              const lastMoves = gameRef.current.getLastMoveInfo();
+                              if (Array.isArray(lastMoves)) {
+                                moveInfo = lastMoves;
+                              }
+                            } catch (error) {
+                              console.warn('[StateDebugger] Failed to get last move info for moves list:', error);
+                              moveInfo = [];
+                            }
+                          }
                           
-                          // Removed excessive logging
-                          // Get tile states properly
+                          // Get tile states properly with error handling
                           let tileStates = gameState?.tileStates || {};
                           if (Object.keys(tileStates).length === 0 && gameRef?.current?.getTileStates) {
-                            const statesMap = gameRef.current.getTileStates();
-                            if (statesMap instanceof Map) {
-                              tileStates = Object.fromEntries(statesMap);
-                            } else {
-                              tileStates = statesMap || {};
+                            try {
+                              const statesMap = gameRef.current.getTileStates();
+                              if (statesMap instanceof Map) {
+                                tileStates = Object.fromEntries(statesMap);
+                              } else if (statesMap && typeof statesMap === 'object') {
+                                tileStates = statesMap;
+                              }
+                            } catch (error) {
+                              console.warn('[StateDebugger] Failed to get tile states for moves list:', error);
+                              tileStates = {};
                             }
                           }
                           const stateCount = Object.keys(tileStates).length;
@@ -640,6 +671,22 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                 <div>
                   <div className="text-gray-400 mb-2">Debug Speed Control</div>
                   <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <label className="text-sm text-gray-300">Base Speed</label>
+                      <input
+                        type="number"
+                        step="10"
+                        value={animationState?.baseDuration || 150}
+                        onChange={(e) => {
+                          const newBase = parseInt(e.target.value);
+                          if (!isNaN(newBase) && gameRef?.current?.setBaseAnimationDuration) {
+                            gameRef.current.setBaseAnimationDuration(newBase);
+                          }
+                        }}
+                        className="w-20 bg-gray-900 text-white font-mono text-center rounded p-1 border border-gray-600"
+                      />
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <span className="text-gray-300">Slowdown: {animationSlowdown}x</span>
                       <span className="text-xs text-gray-500">
@@ -664,8 +711,11 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                           localStorage.setItem('2048-debug-slowdown', newSlowdown.toString());
                           
                           // Apply slowdown to game controller
-                          if (gameRef?.current?.setAnimationDuration) {
-                            const baseDuration = animationState?.baseDuration || 150;
+                          if (gameRef?.current?.setDebugSlowdown) {
+                            gameRef.current.setDebugSlowdown(newSlowdown);
+                          } else if (gameRef?.current?.setAnimationDuration) {
+                            // Fallback to old method
+                            const baseDuration = animationState?.baseDuration ?? 150;
                             gameRef.current.setAnimationDuration(baseDuration * newSlowdown);
                           }
                         }}

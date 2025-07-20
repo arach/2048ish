@@ -13,6 +13,7 @@ export interface RenderConfig {
   easingFunction?: EasingFunction;
   moveEasing?: EasingFunction;
   mergeEasing?: EasingFunction;
+  animationFrameRate?: number; // FPS for animations (default: 60)
   colors: {
     background: string;
     gridBackground: string;
@@ -36,6 +37,7 @@ export const defaultConfig: RenderConfig = {
   easingFunction: 'ease-in-out',
   moveEasing: 'cubic',
   mergeEasing: 'elastic',
+  animationFrameRate: 60,
   colors: {
     background: '#faf8ef',
     gridBackground: '#bbada0',
@@ -100,6 +102,24 @@ export class CanvasRenderer {
     );
   }
 
+  /**
+   * Configure the canvas element for high-DPI displays and set its intrinsic
+   * pixel dimensions based on the current grid configuration.
+   */
+  private setupCanvas(): void {
+    const { gridSize, cellSize, cellGap } = this.config;
+    const canvasSize = gridSize * cellSize + (gridSize + 1) * cellGap;
+
+    // Support Retina / high-DPI screens
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = canvasSize * dpr;
+    this.canvas.height = canvasSize * dpr;
+    this.canvas.style.width = `${canvasSize}px`;
+    this.canvas.style.height = `${canvasSize}px`;
+
+    this.ctx.scale(dpr, dpr);
+  }
+
   private getCellPosition(row: number, col: number): { x: number; y: number } {
     return this.cellPositions[row][col];
   }
@@ -132,6 +152,18 @@ export class CanvasRenderer {
     this.ctx.restore();
   }
 
+  /**
+   * Renders the current game state with optional animations.
+   * 
+   * Performance considerations:
+   * - Canvas requires manual repainting (no automatic updates)
+   * - requestAnimationFrame runs at ~60fps for smooth animations
+   * - Could optimize by: 
+   *   1. Lower frame rate (30fps instead of 60fps)
+   *   2. CSS transforms for simple moves (but complex for 2048)
+   *   3. Only redraw changed regions (partial updates)
+   *   4. Skip frames when animations are nearly complete
+   */
   public render(grid: Grid, animations: AnimationState[] = []): void {
     this.clear();
     this.drawBackground();
@@ -153,7 +185,6 @@ export class CanvasRenderer {
         mergePositions.add(`${animation.position[0]},${animation.position[1]}`);
       } else if (animation.type === 'appear') {
         appearPositions.add(`${animation.position[0]},${animation.position[1]}`);
-        console.log('[Renderer] Appear animation at', `${animation.position[0]},${animation.position[1]}`, 'progress:', animation.progress);
       }
     }
     
@@ -605,5 +636,13 @@ export class AnimationController {
   
   public setDuration(duration: number): void {
     this.duration = duration;
+  }
+  
+  public getActiveAnimationCount(): number {
+    return this.animations.size;
+  }
+  
+  public getIsRunning(): boolean {
+    return this.isRunning;
   }
 }
