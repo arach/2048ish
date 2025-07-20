@@ -8,6 +8,7 @@ export interface GameControllerConfig {
   gridSize?: number;
   animationDuration?: number;
   animationStyle?: 'minimal' | 'playful';
+  easingFunction?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'cubic' | 'elastic' | 'bounce';
   onScoreUpdate?: (score: number) => void;
   onGameOver?: () => void;
   onWin?: () => void;
@@ -29,7 +30,8 @@ export class GameController {
     // Initialize components
     this.gameManager = new GameManager({ gridSize: config.gridSize });
     this.renderer = new CanvasRenderer(config.canvas, {
-      animationStyle: config.animationStyle
+      animationStyle: config.animationStyle,
+      easingFunction: config.easingFunction
     });
     this.inputHandler = new InputHandler(config.canvas);
     
@@ -39,7 +41,10 @@ export class GameController {
       (animations) => {
         const state = this.gameManager.getCurrentState();
         this.renderer.render(state.grid, animations);
-      }
+      },
+      config.easingFunction || 'ease-in-out',
+      config.easingFunction || 'cubic',    // Move easing - use configured or default to cubic
+      'elastic'   // Merge easing always elastic for that satisfying pop
     );
     
     // Set up subscriptions
@@ -258,7 +263,10 @@ export class GameController {
       (animations) => {
         const state = this.gameManager.getCurrentState();
         this.renderer.render(state.grid, animations);
-      }
+      },
+      this.config.easingFunction || 'ease-in-out',
+      this.config.easingFunction || 'cubic',    // Move easing
+      'elastic'   // Merge easing
     );
   }
 }

@@ -15,6 +15,7 @@ export default function Game2048() {
   const [animationMode, setAnimationMode] = useState<'minimal' | 'playful'>('playful');
   const [animationTest, setAnimationTest] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(200);
+  const [easingFunction, setEasingFunction] = useState<'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'cubic' | 'elastic' | 'bounce'>('ease-in-out');
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -30,6 +31,7 @@ export default function Game2048() {
       canvas: canvasRef.current,
       animationDuration: animationSpeed,
       animationStyle: animationMode,
+      easingFunction: easingFunction,
       testMode: animationTest,
       onScoreUpdate: (newScore) => {
         setScore(newScore);
@@ -57,7 +59,7 @@ export default function Game2048() {
       clearInterval(interval);
       controller.destroy();
     };
-  }, [bestScore, animationMode, animationSpeed, animationTest]);
+  }, [bestScore, animationMode, animationSpeed, animationTest, easingFunction]);
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
@@ -302,10 +304,55 @@ export default function Game2048() {
               </div>
             </div>
 
+            <div className="mb-3">
+              <label className="block text-sm font-medium mb-2">Easing Function:</label>
+              <select 
+                value={easingFunction}
+                onChange={(e) => setEasingFunction(e.target.value as any)}
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+              >
+                <option value="linear">Linear</option>
+                <option value="ease-in">Ease In (slow start)</option>
+                <option value="ease-out">Ease Out (slow end)</option>
+                <option value="ease-in-out">Ease In-Out (smooth)</option>
+                <option value="cubic">Cubic (snappy)</option>
+                <option value="elastic">Elastic (bouncy)</option>
+                <option value="bounce">Bounce (playful)</option>
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <button
+                onClick={() => {
+                  // Reload the test scenario
+                  if (controllerRef.current) {
+                    const testState = {
+                      states: [{
+                        grid: [
+                          [2, null, null, 2],     // Two 2s - will merge
+                          [4, null, null, null],  // Single 4 - will just move
+                          [null, null, null, null],
+                          [null, null, null, null]
+                        ],
+                        score: 0,
+                        isGameOver: false,
+                        hasWon: false
+                      }],
+                      currentIndex: 0
+                    };
+                    controllerRef.current.importState(JSON.stringify(testState));
+                  }
+                }}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
+              >
+                🔄 Reset Test Scenario
+              </button>
+            </div>
+
             <div className="text-sm text-gray-600">
               <p>• Use ← → arrows to slide tiles back and forth</p>
               <p>• No new tiles will spawn in test mode</p>
-              <p>• Adjust speed and style to test animations</p>
+              <p>• Adjust speed, style, and easing to test animations</p>
             </div>
           </div>
         )}

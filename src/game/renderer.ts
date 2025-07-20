@@ -11,6 +11,8 @@ export interface RenderConfig {
   animationDuration: number;
   animationStyle?: 'minimal' | 'playful';
   easingFunction?: EasingFunction;
+  moveEasing?: EasingFunction;
+  mergeEasing?: EasingFunction;
   colors: {
     background: string;
     gridBackground: string;
@@ -32,6 +34,8 @@ export const defaultConfig: RenderConfig = {
   animationDuration: 200,
   animationStyle: 'playful',
   easingFunction: 'ease-in-out',
+  moveEasing: 'cubic',
+  mergeEasing: 'elastic',
   colors: {
     background: '#faf8ef',
     gridBackground: '#bbada0',
@@ -369,10 +373,22 @@ export class AnimationController {
   private duration: number;
   private onUpdate: (animations: AnimationState[]) => void;
   private animationFrameId: number | null = null;
+  private easingFunction: EasingFunction;
+  private moveEasing: EasingFunction;
+  private mergeEasing: EasingFunction;
 
-  constructor(duration: number, onUpdate: (animations: AnimationState[]) => void) {
+  constructor(
+    duration: number, 
+    onUpdate: (animations: AnimationState[]) => void, 
+    easingFunction: EasingFunction = 'ease-in-out',
+    moveEasing?: EasingFunction,
+    mergeEasing?: EasingFunction
+  ) {
     this.duration = duration;
     this.onUpdate = onUpdate;
+    this.easingFunction = easingFunction;
+    this.moveEasing = moveEasing || 'cubic';
+    this.mergeEasing = mergeEasing || 'elastic';
   }
 
   public addMoveAnimation(move: Move): void {
@@ -415,9 +431,12 @@ export class AnimationController {
     const elapsed = performance.now() - this.startTime;
     const progress = Math.min(elapsed / this.duration, 1);
     
-    // Update all animations
+    // Update all animations with appropriate easing
     for (const [key, animation] of this.animations) {
-      animation.progress = this.easeInOut(progress);
+      const easingFunc = animation.type === 'move' ? this.moveEasing :
+                        animation.type === 'merge' ? this.mergeEasing :
+                        this.easingFunction;
+      animation.progress = this.applyEasing(progress, easingFunc);
     }
     
     this.onUpdate(Array.from(this.animations.values()));
@@ -430,11 +449,56 @@ export class AnimationController {
     }
   }
 
-  private easeInOut(t: number): number {
-    // Smoother cubic easing
-    return t < 0.5 
-      ? 4 * t * t * t 
-      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  private applyEasing(t: number, easingFunction: EasingFunction): number {
+    switch (easingFunction) {
+      case 'linear':
+        return t;
+      
+      case 'ease-in':
+        return t * t * t;
+      
+      case 'ease-out':
+        return 1 - Math.pow(1 - t, 3);
+      
+      case 'ease-in-out':
+        return t < 0.5 
+          ? 4 * t * t * t 
+          : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      
+      case 'cubic':
+        // Fast acceleration and deceleration - perfect for snappy moves
+        return t < 0.5
+          ? 8 * t * t * t * t
+          : 1 - Math.pow(-2 * t + 2, 4) / 2;
+      
+      case 'elastic':
+        // Gentler elastic effect for merges
+        if (t === 0 || t === 1) return t;
+        const p = 0.4; // Increased period for less nervousness
+        const amplitude = 0.7; // Reduced amplitude
+        return amplitude * Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
+      
+      case 'bounce':
+        // Gentler bounce effect
+        const n1 = 7.5625;
+        const d1 = 2.75;
+        
+        if (t < 1 / d1) {
+          return n1 * t * t;
+        } else if (t < 2 / d1) {
+          t -= 1.5 / d1;
+          return n1 * t * t + 0.75;
+        } else if (t < 2.5 / d1) {
+          t -= 2.25 / d1;
+          return n1 * t * t + 0.9375;
+        } else {
+          t -= 2.625 / d1;
+          return n1 * t * t + 0.984375;
+        }
+      
+      default:
+        return t;
+    }
   }
 
   public stop(): void {
