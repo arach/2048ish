@@ -75,9 +75,8 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
     const interval = setInterval(() => {
       if (gameRef?.current?.getLastMoveInfo) {
         const moves = gameRef.current.getLastMoveInfo();
-        if (moves && moves.length > 0) {
-          setLastMoveInfo(moves);
-        }
+        // Always update, even if empty (to clear old moves)
+        setLastMoveInfo(moves || []);
       }
     }, 100);
     
@@ -503,7 +502,12 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                       </div>
                       <div className="space-y-1 text-xs">
                         {(() => {
+                          // Get moves from all sources and use the most recent non-empty one
                           const moveInfo = gameState?.lastMoves || lastMoveInfo || gameRef?.current?.getLastMoveInfo?.() || [];
+                          
+                          console.log('[StateDebugger] Move sources - gameState:', gameState?.lastMoves?.length || 0, 
+                                      'lastMoveInfo:', lastMoveInfo?.length || 0, 
+                                      'gameRef:', gameRef?.current?.getLastMoveInfo?.()?.length || 0);
                           // Get tile states properly
                           let tileStates = gameState?.tileStates || {};
                           if (Object.keys(tileStates).length === 0 && gameRef?.current?.getTileStates) {

@@ -150,20 +150,24 @@ export class GameController {
       console.log(`[GameController] Move ${this.moveCount}: Tracked ${move.merged ? 'merged' : 'moved'} tile at ${toKey}`);
     }
     
+    // Store the moves for reference
+    this.lastMoves = [...moveResult.moves];
+    const newDebugMoves = [...moveResult.moves];
+    
     // Replace debug states atomically only after we have the new ones ready
     if (this.hasCompletedFirstMove) {
       console.log('[GameController] Replacing debug states for move', this.moveCount, '- Old size:', this.debugTileStates.size, 'New size:', newDebugTileStates.size);
+      console.log('[GameController] Replacing debug moves - Old:', this.debugMoves.length, 'New:', newDebugMoves.length);
       this.debugTileStates = newDebugTileStates;
-      this.debugMoves = [];
+      this.debugMoves = newDebugMoves;
     } else {
       // First move - just add to existing (empty) map
       newDebugTileStates.forEach((value, key) => {
         this.debugTileStates.set(key, value);
       });
+      this.debugMoves = newDebugMoves;
+      console.log('[GameController] First move - Set debug moves:', newDebugMoves.length);
     }
-    // Store the moves for reference
-    this.lastMoves = [...moveResult.moves];
-    this.debugMoves = [...moveResult.moves];
     console.log('[GameController] Move', this.moveCount, '- Total moves:', this.lastMoves.length, 'Debug states after moves:', this.debugTileStates.size);
     
     // Update the renderer with the new debug states
@@ -488,6 +492,9 @@ export class GameController {
   
   public getLastMoveInfo(): Move[] {
     // Return debug snapshot which persists longer
+    if (this.debugMoves.length > 0) {
+      console.log('[GameController] getLastMoveInfo returning', this.debugMoves.length, 'moves');
+    }
     return [...this.debugMoves];
   }
   

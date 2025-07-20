@@ -88,9 +88,7 @@ export default function Game2048() {
         });
         
         // Log for debugging
-        if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
-          console.log('Debug state update - Tile states:', tileStatesObj, 'Moves:', moves);
-        }
+        console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
       }
     };
 
