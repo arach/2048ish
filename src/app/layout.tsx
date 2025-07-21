@@ -23,6 +23,13 @@ export const metadata: Metadata = {
   description: "A testable Canvas-based implementation of 2048 with undo/redo and save/load features",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

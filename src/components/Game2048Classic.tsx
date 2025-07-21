@@ -83,9 +83,13 @@ export default function Game2048Classic() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4" 
-         style={{ background: `linear-gradient(to bottom right, ${theme.background.gradient.from}, ${theme.background.gradient.to})` }}>
-      <div className="max-w-lg w-full">
+    <div className="flex flex-col items-center justify-center h-screen overflow-hidden p-4" 
+         style={{ 
+           background: `linear-gradient(to bottom right, ${theme.background.gradient.from}, ${theme.background.gradient.to})`,
+           height: '100vh',
+           maxHeight: '100vh'
+         }}>
+      <div className="max-w-lg w-full flex flex-col overflow-y-auto" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
         {/* Back button */}
         <Link 
           href="/" 

@@ -51,7 +51,7 @@ export class GameController {
       animationStyle: config.animationStyle,
       easingFunction: config.easingFunction
     });
-    this.inputHandler = new InputHandler(config.canvas);
+    this.inputHandler = new InputHandler(config.canvas, { globalSwipe: true });
     
     // Set up animation controller
     this.animationController = new AnimationController(

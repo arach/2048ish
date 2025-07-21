@@ -116,7 +116,37 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
+  html {
+    /* Prevent pull-to-refresh and overscroll on mobile */
+    overscroll-behavior: none;
+    /* Lock viewport height on mobile */
+    height: 100%;
+  }
+  
   body {
     @apply bg-background text-foreground;
+    /* Prevent scrolling and ensure full height */
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    /* Prevent iOS rubber band scrolling */
+    overscroll-behavior: none;
+    /* Disable touch callouts and selections on iOS */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Allow text selection only in specific areas */
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  
+  /* Ensure the app root takes full height */
+  #__next {
+    height: 100%;
   }
 }

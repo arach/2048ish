@@ -4,6 +4,7 @@ export interface InputHandlerConfig {
   preventDefaultKeys?: boolean;
   swipeThreshold?: number;
   swipeVelocityThreshold?: number;
+  globalSwipe?: boolean; // Enable swipe detection on entire document
 }
 
 export type InputCallback = (direction: Direction) => void;
@@ -24,7 +25,8 @@ export class InputHandler {
     this.config = {
       preventDefaultKeys: config.preventDefaultKeys ?? true,
       swipeThreshold: config.swipeThreshold ?? 50,
-      swipeVelocityThreshold: config.swipeVelocityThreshold ?? 0.3
+      swipeVelocityThreshold: config.swipeVelocityThreshold ?? 0.3,
+      globalSwipe: config.globalSwipe ?? false
     };
     
     this.setupEventListeners();
@@ -40,16 +42,20 @@ export class InputHandler {
     this.handleTouchMove = this.handleTouchMove.bind(this);
     this.handleTouchEnd = this.handleTouchEnd.bind(this);
     
-    this.element.addEventListener('touchstart', this.handleTouchStart, { passive: false });
-    this.element.addEventListener('touchmove', this.handleTouchMove, { passive: false });
-    this.element.addEventListener('touchend', this.handleTouchEnd, { passive: false });
+    // Use document for global swipe or element for local swipe
+    const touchTarget = this.config.globalSwipe ? document : this.element;
+    
+    touchTarget.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+    touchTarget.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+    touchTarget.addEventListener('touchend', this.handleTouchEnd, { passive: false });
     
     // Mouse events (for testing on desktop)
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleMouseUp = this.handleMouseUp.bind(this);
     
-    this.element.addEventListener('mousedown', this.handleMouseDown);
+    const mouseTarget = this.config.globalSwipe ? document : this.element;
+    mouseTarget.addEventListener('mousedown', this.handleMouseDown);
     window.addEventListener('mousemove', this.handleMouseMove);
     window.addEventListener('mouseup', this.handleMouseUp);
   }
@@ -191,11 +197,13 @@ export class InputHandler {
   public destroy(): void {
     window.removeEventListener('keydown', this.handleKeyDown);
     
-    this.element.removeEventListener('touchstart', this.handleTouchStart);
-    this.element.removeEventListener('touchmove', this.handleTouchMove);
-    this.element.removeEventListener('touchend', this.handleTouchEnd);
+    const touchTarget = this.config.globalSwipe ? document : this.element;
+    touchTarget.removeEventListener('touchstart', this.handleTouchStart);
+    touchTarget.removeEventListener('touchmove', this.handleTouchMove);
+    touchTarget.removeEventListener('touchend', this.handleTouchEnd);
     
-    this.element.removeEventListener('mousedown', this.handleMouseDown);
+    const mouseTarget = this.config.globalSwipe ? document : this.element;
+    mouseTarget.removeEventListener('mousedown', this.handleMouseDown);
     window.removeEventListener('mousemove', this.handleMouseMove);
     window.removeEventListener('mouseup', this.handleMouseUp);
     
