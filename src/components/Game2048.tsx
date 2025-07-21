@@ -202,12 +202,12 @@ export default function Game2048() {
         </Link>
         
         {/* Header with logo and new game */}
-        <div className="mb-6">
+        <div className="mb-4">
           <NavBar onNewGame={handleNewGame} />
         </div>
         
         {/* Score and Best below header */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-3 mb-4">
           <div className="rounded-lg px-5 py-3" style={{ 
             backgroundColor: theme.ui.card.background,
             boxShadow: `0 2px 4px ${theme.ui.card.shadow}`
@@ -252,7 +252,7 @@ export default function Game2048() {
           )}
         </div>
 
-        <div className="mt-6 flex justify-center items-center gap-2">
+        <div className="mt-4 flex justify-center items-center gap-2">
           <button
             onClick={handleUndo}
             disabled={!canUndo}
@@ -289,18 +289,18 @@ export default function Game2048() {
           </button>
         </div>
         
-        <div className="mt-4 text-center text-sm space-y-1">
+        <div className="mt-3 text-center text-sm space-y-1">
           <p className="font-semibold" style={{ color: theme.ui.text.primary }}>HOW TO PLAY</p>
           <p style={{ color: theme.ui.text.secondary }}>Use arrow keys to move tiles. When two tiles with the same number touch, they merge into one!</p>
         </div>
         
         {/* Agent Controls */}
-        <div className="mt-6 overflow-y-auto flex-shrink-0">
+        <div className="mt-4 overflow-y-auto flex-shrink-0">
           <AgentControls onMove={handleAgentMove} getGameState={getGameState} />
         </div>
         
         {/* Try Classic Mode CTA */}
-        <div className="mt-8 text-center pb-4">
+        <div className="mt-6 text-center pb-4">
           <Link 
             href="/play" 
             className="inline-flex items-center text-sm font-medium transition-colors"

@@ -71,6 +71,7 @@ export class CanvasRenderer {
   private animationFrameId: number | null = null;
   // Pre-computed top-left pixel positions for each grid cell – avoids recomputing every frame
   private cellPositions: { x: number; y: number }[][] = [];
+  private lastGrid: Grid | null = null;
 
   constructor(canvas: HTMLCanvasElement, config: Partial<RenderConfig> = {}) {
     this.canvas = canvas;
@@ -80,10 +81,29 @@ export class CanvasRenderer {
     }
     this.ctx = ctx;
     this.config = { ...defaultConfig, ...config };
+    
+    // Calculate responsive cell size based on viewport
+    this.config = this.calculateResponsiveConfig();
+    
     this.setupCanvas();
 
     // Cache pixel positions for each cell so we don't have to recalculate repeatedly
     this.computeCellPositions();
+    
+    // Handle window resize
+    this.handleResize = this.handleResize.bind(this);
+    window.addEventListener('resize', this.handleResize);
+  }
+  
+  private handleResize(): void {
+    // Recalculate responsive config
+    this.config = this.calculateResponsiveConfig();
+    this.setupCanvas();
+    this.computeCellPositions();
+    // Force a re-render with current state
+    if (this.lastGrid) {
+      this.render(this.lastGrid, []);
+    }
   }
 
   /**
@@ -98,6 +118,41 @@ export class CanvasRenderer {
         y: row * cellSize + (row + 1) * cellGap
       }))
     );
+  }
+
+  /**
+   * Calculate responsive configuration based on viewport size
+   */
+  private calculateResponsiveConfig(): RenderConfig {
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate maximum available space (with padding)
+    const maxWidth = Math.min(viewportWidth - 32, 512); // 32px for padding, 512px max
+    const maxHeight = viewportHeight * 0.5; // Use max 50% of height for the game board
+    
+    // Use the smaller dimension to ensure square grid fits
+    const maxSize = Math.min(maxWidth, maxHeight);
+    
+    // Calculate cell size based on grid
+    const { gridSize } = this.config;
+    const cellGap = 12; // Base gap size
+    const totalGaps = (gridSize + 1) * cellGap;
+    const availableSpace = maxSize - totalGaps;
+    const cellSize = Math.floor(availableSpace / gridSize);
+    
+    // Scale font size proportionally
+    const fontSize = Math.floor(cellSize * 0.47); // ~47% of cell size
+    
+    // Return updated config
+    return {
+      ...this.config,
+      cellSize: Math.max(cellSize, 50), // Minimum 50px cells
+      fontSize: Math.max(fontSize, 24), // Minimum 24px font
+      cellGap: Math.max(Math.floor(cellSize * 0.11), 8), // Scale gap proportionally, min 8px
+      borderRadius: Math.max(Math.floor(cellSize * 0.055), 3), // Scale radius proportionally
+    };
   }
 
   /**
@@ -163,6 +218,7 @@ export class CanvasRenderer {
    *   4. Skip frames when animations are nearly complete
    */
   public render(grid: Grid, animations: AnimationState[] = []): void {
+    this.lastGrid = grid; // Store for resize
     this.clear();
     this.drawBackground();
     
@@ -436,6 +492,7 @@ export class CanvasRenderer {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }
+    window.removeEventListener('resize', this.handleResize);
   }
 }
 
