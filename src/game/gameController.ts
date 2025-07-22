@@ -12,6 +12,15 @@ export interface GameControllerConfig {
   onScoreUpdate?: (score: number) => void;
   onGameOver?: () => void;
   onWin?: () => void;
+  onMoveComplete?: (boardState: { 
+    grid: (number | null)[][]; 
+    score: number; 
+    moveCount: number; 
+    lastDirection?: Direction;
+    maxTile: number;
+    emptyTiles: number;
+    possibleMerges: number;
+  }) => void;
   testMode?: boolean;  // When true, doesn't spawn new tiles
 }
 
@@ -31,6 +40,7 @@ export class GameController {
   private debugMoves: Move[] = []; // Separate debug snapshot
   private hasCompletedFirstMove: boolean = false; // Track if we've completed at least one move
   private debugSlowdownMultiplier: number = 1; // Track debug slowdown multiplier
+  private lastDirection: Direction | undefined; // Track the last move direction
   
   // Tile lineage tracking - persists across all moves
   private tileLineage: Map<string, {
@@ -116,6 +126,7 @@ export class GameController {
   }
 
   private executeMove(direction: Direction): void {
+    this.lastDirection = direction; // Track the direction for the callback
     const oldState = this.gameManager.getCurrentState();
     const { grid: oldGrid } = oldState;
     
@@ -216,6 +227,28 @@ export class GameController {
     this.hasCompletedFirstMove = true;
     this.render(); // Final render to ensure grid is in its end state
     this.forceDebugRefresh();
+    
+    // Record the completed board state for explainability
+    if (this.config.onMoveComplete) {
+      const currentState = this.gameManager.getCurrentState();
+      const grid = currentState.grid as (number | null)[][];
+      
+      // Calculate additional metrics
+      const maxTile = Math.max(...grid.flat().filter((cell): cell is number => cell !== null), 0);
+      const emptyTiles = grid.flat().filter(cell => cell === null).length;
+      const possibleMerges = this.countPossibleMerges(grid);
+      
+      this.config.onMoveComplete({
+        grid,
+        score: currentState.score,
+        moveCount: this.moveCount,
+        lastDirection: this.lastDirection,
+        maxTile,
+        emptyTiles,
+        possibleMerges
+      });
+    }
+    
     this.processNextQueuedMove();
   }
 
@@ -493,6 +526,21 @@ export class GameController {
     return this.gameManager.getHistory().currentIndex;
   }
   
+  private countPossibleMerges(grid: (number | null)[][]): number {
+    let count = 0;
+    for (let row = 0; row < grid.length; row++) {
+      for (let col = 0; col < grid[row].length; col++) {
+        const value = grid[row][col];
+        if (!value) continue;
+        // Check right
+        if (col < grid[row].length - 1 && grid[row][col + 1] === value) count++;
+        // Check down
+        if (row < grid.length - 1 && grid[row + 1][col] === value) count++;
+      }
+    }
+    return count;
+  }
+
   private findTileInGrid(grid: Grid, value: number): boolean {
     for (let r = 0; r < grid.length; r++) {
       for (let c = 0; c < grid[r].length; c++) {

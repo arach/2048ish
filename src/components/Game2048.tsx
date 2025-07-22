@@ -5,8 +5,10 @@ import { GameController } from '../game/gameController';
 import { DebugOverlay } from './debug/DebugOverlay';
 import { NavBar } from './NavBar';
 import { AgentControls } from './AgentControls';
+import { MoveAnalysisTable, MoveAnalysis } from './MoveAnalysisTable';
 import { theme } from '../theme/colors';
 import { Direction, GameState } from '../agents/types';
+import { AlgorithmicAgent } from '../agents/algorithmicAgent';
 import Link from 'next/link';
 
 export default function Game2048() {
@@ -19,6 +21,23 @@ export default function Game2048() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [animationMode] = useState<'minimal' | 'playful'>('playful');
+  const [agentExplanation, setAgentExplanation] = useState<string>('');
+  const [moveAnalyses, setMoveAnalyses] = useState<MoveAnalysis[]>([]);
+  const [isAgentPlaying, setIsAgentPlaying] = useState(false);
+  const previousBoardRef = useRef<(number | null)[][] | null>(null);
+  const pendingAgentMoveRef = useRef<{
+    direction: Direction; 
+    boardBefore: (number | null)[][] | null;
+    alternatives?: {
+      validMoves: string[];
+      analysis: Record<string, {
+        merges: number;
+        emptyAfter: number;
+        maxTilePosition: string;
+        reasoning: string;
+      }>;
+    };
+  } | null>(null);
   
   // Debug state
   const [debugGameState, setDebugGameState] = useState<any>(null);
@@ -53,6 +72,39 @@ export default function Game2048() {
       },
       onGameOver: () => setGameOver(true),
       onWin: () => setHasWon(true),
+      onMoveComplete: (boardState) => {
+        // Check if this is an agent move we're tracking
+        if (pendingAgentMoveRef.current && boardState.lastDirection === pendingAgentMoveRef.current.direction) {
+          const { boardBefore, alternatives } = pendingAgentMoveRef.current;
+          const boardAfter = boardState.grid.map(row => [...row]);
+          
+          // Verify the board actually changed
+          const boardChanged = JSON.stringify(boardBefore) !== JSON.stringify(boardAfter);
+          
+          if (boardChanged && boardBefore) {
+            const analysis: MoveAnalysis = {
+              moveNumber: boardState.moveCount,
+              direction: boardState.lastDirection!,
+              score: boardState.score,
+              maxTile: boardState.maxTile,
+              explanation: '', // Will be updated when explanation comes
+              boardStateBefore: boardBefore,
+              boardState: boardAfter,
+              boardAnalysis: {
+                emptyTiles: boardState.emptyTiles,
+                possibleMerges: boardState.possibleMerges,
+                cornerPosition: isMaxTileInCorner(boardAfter)
+              },
+              alternatives
+            };
+            
+            setMoveAnalyses(prev => [...prev, analysis]);
+          }
+          
+          // Clear the pending move
+          pendingAgentMoveRef.current = null;
+        }
+      },
       animationStyle: animationMode,
       easingFunction: 'ease-in-out'
     });
@@ -68,7 +120,7 @@ export default function Game2048() {
       if (controller.getGameState) {
         const state = controller.getGameState();
         const tileStatesMap = controller.getTileStates ? controller.getTileStates() : new Map();
-        const tileStatesObj = {};
+        const tileStatesObj: Record<string, 'new' | 'merged' | 'moved'> = {};
         
         // Convert Map to object properly
         if (tileStatesMap instanceof Map) {
@@ -84,21 +136,27 @@ export default function Game2048() {
         setDebugGameState({
           ...state,
           moves: controller.getStats?.()?.moves || 0,
-          maxTile: state.grid ? Math.max(...state.grid.flat().filter(Boolean)) : 0,
+          maxTile: state.grid ? Math.max(...state.grid.flat().filter((cell): cell is number => cell !== null)) : 0,
           tileStates: tileStatesObj,
           lastMoves: moves
         });
         
         // Log only when there's something meaningful to report
-        if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
-          console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
-        }
+        // if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
+        //   console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
+        // }
       }
     };
 
     // Subscribe to state changes
     // Update immediately
     updateUndoRedo();
+    
+    // Initialize the sliding window with the starting board state
+    const initialState = controller.getGameState?.();
+    if (initialState?.grid) {
+      previousBoardRef.current = initialState.grid.map(row => [...row]);
+    }
     
     // Subscribe to game state changes directly - no polling needed
     const unsubscribe = controller.subscribeToGameState?.(() => {
@@ -117,7 +175,7 @@ export default function Game2048() {
         isAnimating: animState.isAnimating,
         lastAnimationTime: animState.lastAnimationTime
       });
-      console.log('[Game2048] Debug - Animation state:', debugAnimationState);
+      // console.log('[Game2048] Debug - Animation state:', debugAnimationState);
     } else {
       setDebugAnimationState({
         duration: 150,
@@ -128,20 +186,28 @@ export default function Game2048() {
         isAnimating: false,
         lastAnimationTime: 0
       });
-      console.log('[Game2048] Debug - Animation state (else):', debugAnimationState);
+      // console.log('[Game2048] Debug - Animation state (else):', debugAnimationState);
     }
 
     return () => {
       if (unsubscribe) unsubscribe();
       controller.destroy();
     };
-  }, [bestScore, animationMode]);
+  }, [bestScore, animationMode, isAgentPlaying]);
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
       controllerRef.current.newGame();
       setGameOver(false);
       setHasWon(false);
+      setMoveAnalyses([]);
+      setAgentExplanation('');
+      
+      // Reset the sliding window with the new board state
+      const state = controllerRef.current.getGameState?.();
+      if (state?.grid) {
+        previousBoardRef.current = state.grid.map(row => [...row]);
+      }
     }
   }, []);
 
@@ -157,11 +223,58 @@ export default function Game2048() {
     }
   }, []);
 
-  const handleAgentMove = useCallback((direction: Direction) => {
+  
+  const handleAgentMove = useCallback((direction: Direction, stateBefore?: GameState, agent?: AlgorithmicAgent) => {
     if (controllerRef.current) {
+      // Capture the board state BEFORE the move (from the agent's perspective)
+      const boardBefore = stateBefore ? (stateBefore.grid as (number | null)[][]).map(row => [...row]) : null;
+      
+      // Get move alternatives analysis from the agent
+      let alternatives = undefined;
+      if (agent && stateBefore) {
+        alternatives = agent.getMoveAlternatives(stateBefore);
+      }
+      
+      // Store the pending move data for processing in onMoveComplete
+      pendingAgentMoveRef.current = {
+        direction,
+        boardBefore,
+        alternatives
+      };
+      
+      // Make the move - this will trigger animations and eventually call onMoveComplete
       controllerRef.current.move(direction);
     }
   }, []);
+  
+  const handleAgentExplanation = useCallback((explanation: string) => {
+    setAgentExplanation(explanation);
+    // Update the last move with its explanation
+    if (explanation) {
+      setMoveAnalyses(prev => {
+        if (prev.length === 0) return prev;
+        const updated = [...prev];
+        updated[updated.length - 1].explanation = explanation;
+        return updated;
+      });
+    } else {
+      // Empty explanation means agent stopped
+      setIsAgentPlaying(false);
+    }
+  }, []);
+  
+  // Helper functions for board analysis
+  
+  const isMaxTileInCorner = (grid: (number | null)[][]): boolean => {
+    const flatGrid = grid.flat().filter(Boolean) as number[];
+    if (flatGrid.length === 0) return false;
+    const maxTile = Math.max(...flatGrid);
+    const corners = [
+      grid[0][0], grid[0][grid[0].length - 1],
+      grid[grid.length - 1][0], grid[grid.length - 1][grid[0].length - 1]
+    ];
+    return corners.includes(maxTile);
+  };
 
   const getGameState = useCallback((): GameState => {
     if (!controllerRef.current) {
@@ -183,13 +296,15 @@ export default function Game2048() {
   }, [gameOver]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen overflow-hidden p-4" 
+    <div className="flex h-screen overflow-hidden" 
          style={{ 
            background: `linear-gradient(to bottom right, ${theme.background.gradient.from}, ${theme.background.gradient.to})`,
            height: '100vh',
            maxHeight: '100vh'
          }}>
-      <div className="max-w-lg w-full flex flex-col overflow-y-auto" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
+      {/* Main Game Column */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+        <div className="max-w-lg w-full flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
         {/* Back button */}
         <Link 
           href="/" 
@@ -225,6 +340,7 @@ export default function Game2048() {
           </div>
         </div>
 
+
         <div className="relative">
           <canvas
             ref={canvasRef}
@@ -236,7 +352,7 @@ export default function Game2048() {
             <div className="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <div className="text-center text-white">
                 <h2 className="text-5xl font-bold mb-6">
-                  {hasWon ? '🎉 You Win!' : 'Game Over'}
+                  {hasWon ? 'You Win!' : 'Game Over'}
                 </h2>
                 <p className="text-xl mb-6 opacity-90">
                   Score: {score.toLocaleString()}
@@ -295,8 +411,13 @@ export default function Game2048() {
         </div>
         
         {/* Agent Controls */}
-        <div className="mt-4 overflow-y-auto flex-shrink-0">
-          <AgentControls onMove={handleAgentMove} getGameState={getGameState} />
+        <div className="mt-4 flex-shrink-0">
+          <AgentControls 
+            onMove={handleAgentMove} 
+            getGameState={getGameState}
+            onExplanation={handleAgentExplanation}
+            onPlayingStateChange={setIsAgentPlaying}
+          />
         </div>
         
         {/* Try Classic Mode CTA */}
@@ -308,8 +429,25 @@ export default function Game2048() {
             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            🎮 Try Classic Mode →
+            Try Classic Mode →
           </Link>
+        </div>
+      </div>
+      </div>
+      
+      {/* Move Analysis Column - Only show on larger screens */}
+      <div className="hidden xl:block w-[500px] p-4">
+        <div className="h-full flex flex-col">
+          {/* Spacer to align with score section */}
+          <div style={{ height: '120px' }}></div>
+          
+          {/* Move Analysis Table */}
+          <div className="flex-1" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+            <MoveAnalysisTable 
+              moves={moveAnalyses} 
+              isPlaying={isAgentPlaying}
+            />
+          </div>
         </div>
       </div>
       

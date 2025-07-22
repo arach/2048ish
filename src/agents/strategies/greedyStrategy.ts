@@ -1,9 +1,9 @@
 import { PlayStrategy, GameState, Direction, Grid } from '../types';
 
 export class GreedyStrategy implements PlayStrategy {
-  name = "Merge Monster 👾";
+  name = "Merge Monster";
   description = "Always make the move that creates the most merges";
-  icon = "👾";
+  icon = "";
   
   getNextMove(state: GameState): Direction | null {
     const { grid } = state;
@@ -30,11 +30,122 @@ export class GreedyStrategy implements PlayStrategy {
   }
   
   explainMove(move: Direction, state: GameState): string {
-    const simulation = this.simulateMove(state.grid, move);
-    if (simulation.mergeCount > 0) {
-      return `I love to squish tiles together! Moving ${move} to make ${simulation.mergeCount} merge${simulation.mergeCount > 1 ? 's' : ''}! Nom nom nom! 👾`;
+    const { grid } = state;
+    const simulation = this.simulateMove(grid, move);
+    
+    // Get details about specific merges
+    const mergeDetails = this.getMergeDetails(grid, move);
+    
+    // Build specific explanation
+    let explanation = `Moving ${move.toUpperCase()}`;
+    
+    if (mergeDetails.length > 0) {
+      const mergeDescriptions = mergeDetails.map(m => `${m.value1}+${m.value2}=${m.result}`);
+      explanation += ` to create ${mergeDetails.length} merge${mergeDetails.length > 1 ? 's' : ''}: ${mergeDescriptions.join(', ')}`;
+      explanation += ` (+${simulation.scoreGain} points!)`;
+    } else {
+      explanation += ` to position tiles for future merges`;
     }
-    return `Moving ${move} to set up future merges! I'm always hungry for more! 👾`;
+    
+    // Compare with other moves
+    const allMoves: Direction[] = ['up', 'down', 'left', 'right'];
+    const alternatives = allMoves.filter(d => d !== move && this.canMove(grid, d));
+    
+    if (alternatives.length > 0) {
+      // Check why this move is better
+      let betterThan: string[] = [];
+      for (const alt of alternatives) {
+        const altSim = this.simulateMove(grid, alt);
+        if (simulation.mergeCount > altSim.mergeCount) {
+          betterThan.push(`${alt} (only ${altSim.mergeCount} merges)`);
+        } else if (simulation.mergeCount === altSim.mergeCount && simulation.scoreGain > altSim.scoreGain) {
+          betterThan.push(`${alt} (less points)`);
+        }
+      }
+      
+      if (betterThan.length > 0) {
+        explanation += `. Better than ${betterThan[0]}`;
+      }
+    }
+    
+    return explanation;
+  }
+  
+  private getMergeDetails(grid: Grid, direction: Direction): Array<{value1: number, value2: number, result: number}> {
+    const merges: Array<{value1: number, value2: number, result: number}> = [];
+    const size = grid.length;
+    
+    switch (direction) {
+      case 'up':
+        for (let col = 0; col < size; col++) {
+          const values: number[] = [];
+          for (let row = 0; row < size; row++) {
+            if (grid[row][col] !== null) {
+              values.push(grid[row][col]!);
+            }
+          }
+          for (let i = 0; i < values.length - 1; i++) {
+            if (values[i] === values[i + 1]) {
+              merges.push({ value1: values[i], value2: values[i + 1], result: values[i] * 2 });
+              i++; // Skip next as it was merged
+            }
+          }
+        }
+        break;
+        
+      case 'down':
+        for (let col = 0; col < size; col++) {
+          const values: number[] = [];
+          for (let row = size - 1; row >= 0; row--) {
+            if (grid[row][col] !== null) {
+              values.push(grid[row][col]!);
+            }
+          }
+          for (let i = 0; i < values.length - 1; i++) {
+            if (values[i] === values[i + 1]) {
+              merges.push({ value1: values[i], value2: values[i + 1], result: values[i] * 2 });
+              i++;
+            }
+          }
+        }
+        break;
+        
+      case 'left':
+        for (let row = 0; row < size; row++) {
+          const values: number[] = [];
+          for (let col = 0; col < size; col++) {
+            if (grid[row][col] !== null) {
+              values.push(grid[row][col]!);
+            }
+          }
+          for (let i = 0; i < values.length - 1; i++) {
+            if (values[i] === values[i + 1]) {
+              merges.push({ value1: values[i], value2: values[i + 1], result: values[i] * 2 });
+              i++;
+            }
+          }
+        }
+        break;
+        
+      case 'right':
+        for (let row = 0; row < size; row++) {
+          const values: number[] = [];
+          for (let col = size - 1; col >= 0; col--) {
+            if (grid[row][col] !== null) {
+              values.push(grid[row][col]!);
+            }
+          }
+          for (let i = 0; i < values.length - 1; i++) {
+            if (values[i] === values[i + 1]) {
+              merges.push({ value1: values[i], value2: values[i + 1], result: values[i] * 2 });
+              i++;
+            }
+          }
+        }
+        break;
+    }
+    
+    return merges;
   }
   
   private simulateMove(grid: Grid, direction: Direction): { mergeCount: number; scoreGain: number; resultGrid: Grid } {

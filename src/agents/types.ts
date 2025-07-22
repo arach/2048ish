@@ -17,12 +17,21 @@ export interface MoveAnalysis {
   confidence: number;
 }
 
+export interface MoveEvaluation {
+  merges: number;
+  emptyAfter: number;
+  maxTilePosition: string;
+  score: number;
+  reasoning: string;
+}
+
 export interface PlayStrategy {
   name: string;
   description: string;
   icon: string;
   getNextMove(state: GameState): Direction | null;
   explainMove(move: Direction, state: GameState): string;
+  evaluateAllMoves?(state: GameState): { validMoves: Direction[]; evaluations: Record<Direction, MoveEvaluation> };
 }
 
 export interface GameAgent {

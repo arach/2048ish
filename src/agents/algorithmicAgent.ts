@@ -13,6 +13,7 @@ export class AlgorithmicAgent implements GameAgent {
   private explainMoves: boolean;
   private isPlaying: boolean = false;
   private moveTimeout: NodeJS.Timeout | null = null;
+  private onExplanation?: (explanation: string) => void;
   
   constructor(config: AgentConfig = {}) {
     this.speed = config.speed ?? 2; // Default 2 moves per second
@@ -52,14 +53,28 @@ export class AlgorithmicAgent implements GameAgent {
     const move = this.strategy.getNextMove(gameState);
     
     if (move && this.explainMoves) {
-      // Could emit explanation event here
-      console.log(`${this.strategy.icon} ${this.strategy.explainMove(move, gameState)}`);
+      const explanation = this.strategy.explainMove(move, gameState);
+      // console.log(explanation);
+      if (this.onExplanation) {
+        this.onExplanation(explanation);
+      }
     }
     
     return move;
   }
   
-  startPlaying(onMove: (move: Direction) => void, getState: () => GameState): void {
+  getMoveAlternatives(gameState: GameState): { validMoves: string[]; analysis: Record<string, any> } | null {
+    if (this.strategy.evaluateAllMoves) {
+      const evaluation = this.strategy.evaluateAllMoves(gameState);
+      return {
+        validMoves: evaluation.validMoves,
+        analysis: evaluation.evaluations
+      };
+    }
+    return null;
+  }
+  
+  startPlaying(onMove: (move: Direction, stateBefore?: GameState) => void, getState: () => GameState): void {
     if (this.isPlaying) return;
     
     this.isPlaying = true;
@@ -71,7 +86,8 @@ export class AlgorithmicAgent implements GameAgent {
       const move = await this.getNextMove(state);
       
       if (move) {
-        onMove(move);
+        // Pass the state we used for decision making along with the move
+        onMove(move, state);
       }
       
       if (this.isPlaying && !state.isGameOver) {
@@ -109,5 +125,9 @@ export class AlgorithmicAgent implements GameAgent {
   
   setExplainMoves(explain: boolean): void {
     this.explainMoves = explain;
+  }
+  
+  setOnExplanation(callback: (explanation: string) => void): void {
+    this.onExplanation = callback;
   }
 }

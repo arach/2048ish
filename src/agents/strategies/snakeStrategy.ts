@@ -1,9 +1,9 @@
 import { PlayStrategy, GameState, Direction, Grid } from '../types';
 
 export class SnakeStrategy implements PlayStrategy {
-  name = "Snake Builder 🐍";
+  name = "Snake Builder";
   description = "Build tiles in a snake/zigzag pattern";
-  icon = "🐍";
+  icon = "";
   
   getNextMove(state: GameState): Direction | null {
     const { grid } = state;
@@ -47,7 +47,134 @@ export class SnakeStrategy implements PlayStrategy {
   }
   
   explainMove(move: Direction, state: GameState): string {
-    return `I slither ${move} to organize my tiles in a zigzag pattern! 🐍`;
+    const { grid } = state;
+    
+    // Find merges that will happen
+    const merges = this.findMergesForMove(grid, move);
+    
+    // Analyze row states
+    const bottomRowEmpty = this.countEmptyInRow(grid, grid.length - 1);
+    const secondRowEmpty = this.countEmptyInRow(grid, grid.length - 2);
+    
+    // Build specific explanation
+    let explanation = `Moving ${move.toUpperCase()}`;
+    
+    // Explain merges
+    if (merges.length > 0) {
+      const mergeDescriptions = merges.map(m => `${m.value1}+${m.value2}=${m.result}`);
+      explanation += ` to merge ${mergeDescriptions.join(', ')}`;
+    }
+    
+    // Explain snake pattern logic
+    if (move === 'down' && bottomRowEmpty > 0) {
+      explanation += `, filling bottom row (${bottomRowEmpty} empty)`;
+    } else if (move === 'right' && this.shouldFillBottomRow(grid)) {
+      explanation += `, organizing bottom row left-to-right`;
+    } else if (move === 'left' && bottomRowEmpty === 0 && secondRowEmpty > 0) {
+      explanation += `, filling 2nd row right-to-left (snake pattern)`;
+    }
+    
+    // Find the largest value in grid
+    let maxValue = 0;
+    let totalTiles = 0;
+    for (let row = 0; row < grid.length; row++) {
+      for (let col = 0; col < grid[row].length; col++) {
+        if (grid[row][col]) {
+          maxValue = Math.max(maxValue, grid[row][col]);
+          totalTiles++;
+        }
+      }
+    }
+    
+    explanation += `. Keeping ${totalTiles} tiles organized, max: ${maxValue}`;
+    
+    return explanation;
+  }
+  
+  private findMergesForMove(grid: Grid, direction: Direction): Array<{value1: number, value2: number, result: number}> {
+    const merges: Array<{value1: number, value2: number, result: number}> = [];
+    const size = grid.length;
+    
+    switch (direction) {
+      case 'up':
+        for (let col = 0; col < size; col++) {
+          for (let row = 1; row < size; row++) {
+            const current = grid[row][col];
+            if (current !== null) {
+              // Look for merge target
+              for (let targetRow = row - 1; targetRow >= 0; targetRow--) {
+                const target = grid[targetRow][col];
+                if (target === current) {
+                  merges.push({ value1: current, value2: target, result: current * 2 });
+                  break;
+                } else if (target !== null) {
+                  break;
+                }
+              }
+            }
+          }
+        }
+        break;
+        
+      case 'down':
+        for (let col = 0; col < size; col++) {
+          for (let row = size - 2; row >= 0; row--) {
+            const current = grid[row][col];
+            if (current !== null) {
+              for (let targetRow = row + 1; targetRow < size; targetRow++) {
+                const target = grid[targetRow][col];
+                if (target === current) {
+                  merges.push({ value1: current, value2: target, result: current * 2 });
+                  break;
+                } else if (target !== null) {
+                  break;
+                }
+              }
+            }
+          }
+        }
+        break;
+        
+      case 'left':
+        for (let row = 0; row < size; row++) {
+          for (let col = 1; col < size; col++) {
+            const current = grid[row][col];
+            if (current !== null) {
+              for (let targetCol = col - 1; targetCol >= 0; targetCol--) {
+                const target = grid[row][targetCol];
+                if (target === current) {
+                  merges.push({ value1: current, value2: target, result: current * 2 });
+                  break;
+                } else if (target !== null) {
+                  break;
+                }
+              }
+            }
+          }
+        }
+        break;
+        
+      case 'right':
+        for (let row = 0; row < size; row++) {
+          for (let col = size - 2; col >= 0; col--) {
+            const current = grid[row][col];
+            if (current !== null) {
+              for (let targetCol = col + 1; targetCol < size; targetCol++) {
+                const target = grid[row][targetCol];
+                if (target === current) {
+                  merges.push({ value1: current, value2: target, result: current * 2 });
+                  break;
+                } else if (target !== null) {
+                  break;
+                }
+              }
+            }
+          }
+        }
+        break;
+    }
+    
+    return merges;
   }
   
   private shouldFillBottomRow(grid: Grid): boolean {

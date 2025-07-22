@@ -6,22 +6,25 @@ import { Direction, GameState } from '../agents/types';
 import { theme } from '../theme/colors';
 
 interface AgentControlsProps {
-  onMove: (direction: Direction) => void;
+  onMove: (direction: Direction, stateBefore?: GameState, agent?: AlgorithmicAgent) => void;
   getGameState: () => GameState;
+  onExplanation?: (explanation: string) => void;
+  onPlayingStateChange?: (isPlaying: boolean) => void;
 }
 
 const strategies = [
-  { id: 'corner', name: 'Corner Master 🏰', description: 'Keeps big tiles in corner' },
-  { id: 'snake', name: 'Snake Builder 🐍', description: 'Builds in zigzag pattern' },
-  { id: 'greedy', name: 'Merge Monster 👾', description: 'Maximizes merges' },
+  { id: 'corner', name: 'Corner Master', description: 'Keeps big tiles in corner' },
+  { id: 'snake', name: 'Snake Builder', description: 'Builds in zigzag pattern' },
+  { id: 'greedy', name: 'Merge Monster', description: 'Maximizes merges' },
 ];
 
-export function AgentControls({ onMove, getGameState }: AgentControlsProps) {
+export function AgentControls({ onMove, getGameState, onExplanation, onPlayingStateChange }: AgentControlsProps) {
   const [agent, setAgent] = useState<AlgorithmicAgent | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState('corner');
   const [speed, setSpeed] = useState(2);
   const [showExplanations, setShowExplanations] = useState(true);
+  const [lastExplanation, setLastExplanation] = useState<string>('');
   
   useEffect(() => {
     // Cleanup on unmount
@@ -43,6 +46,13 @@ export function AgentControls({ onMove, getGameState }: AgentControlsProps) {
       explainMoves: showExplanations,
     });
     
+    newAgent.setOnExplanation((explanation) => {
+      setLastExplanation(explanation);
+      if (onExplanation) {
+        onExplanation(explanation);
+      }
+    });
+    
     setAgent(newAgent);
     return newAgent;
   };
@@ -50,19 +60,34 @@ export function AgentControls({ onMove, getGameState }: AgentControlsProps) {
   const handlePlayPause = () => {
     if (!agent) {
       const newAgent = createAgent();
-      newAgent.startPlaying(onMove, getGameState);
+      newAgent.startPlaying((direction, stateBefore) => {
+        onMove(direction, stateBefore, newAgent);
+      }, getGameState);
       setIsPlaying(true);
+      if (onPlayingStateChange) onPlayingStateChange(true);
     } else if (isPlaying) {
       agent.stopPlaying();
       setIsPlaying(false);
+      setLastExplanation(''); // Clear explanation when stopping
+      if (onExplanation) {
+        onExplanation('');
+      }
+      if (onPlayingStateChange) onPlayingStateChange(false);
     } else {
-      agent.startPlaying(onMove, getGameState);
+      agent.startPlaying((direction, stateBefore) => {
+        onMove(direction, stateBefore, agent);
+      }, getGameState);
       setIsPlaying(true);
+      if (onPlayingStateChange) onPlayingStateChange(true);
     }
   };
   
   const handleStrategyChange = (strategy: string) => {
     setSelectedStrategy(strategy);
+    setLastExplanation(''); // Clear explanation when changing strategy
+    if (onExplanation) {
+      onExplanation('');
+    }
     if (agent) {
       agent.destroy();
       const newAgent = new AlgorithmicAgent({
@@ -70,10 +95,20 @@ export function AgentControls({ onMove, getGameState }: AgentControlsProps) {
         speed: speed,
         explainMoves: showExplanations,
       });
+      
+      newAgent.setOnExplanation((explanation) => {
+        setLastExplanation(explanation);
+        if (onExplanation) {
+          onExplanation(explanation);
+        }
+      });
+      
       setAgent(newAgent);
       
       if (isPlaying) {
-        newAgent.startPlaying(onMove, getGameState);
+        newAgent.startPlaying((direction, stateBefore) => {
+          onMove(direction, stateBefore, newAgent);
+        }, getGameState);
       }
     }
   };
@@ -87,9 +122,12 @@ export function AgentControls({ onMove, getGameState }: AgentControlsProps) {
   
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm" style={{ backgroundColor: theme.ui.card.background }}>
-      <h3 className="text-lg font-semibold mb-3" style={{ color: theme.ui.text.primary }}>
-        Agent Controls
+      <h3 className="text-lg font-semibold mb-2" style={{ color: theme.ui.text.primary }}>
+        AI Agent Controls
       </h3>
+      <p className="text-xs mb-3" style={{ color: theme.ui.text.secondary }}>
+        Let an AI play for you! Choose a strategy and watch it work.
+      </p>
       
       {/* Strategy Selection */}
       <div className="mb-4">
@@ -164,7 +202,7 @@ export function AgentControls({ onMove, getGameState }: AgentControlsProps) {
           color: theme.ui.text.button,
         }}
       >
-        {isPlaying ? '⏸ Pause Agent' : '▶️ Start Agent'}
+        {isPlaying ? 'Pause Agent' : 'Start Agent'}
       </button>
       
       {/* Status */}
@@ -173,6 +211,28 @@ export function AgentControls({ onMove, getGameState }: AgentControlsProps) {
           <p className="text-sm" style={{ color: theme.ui.text.secondary }}>
             {isPlaying ? `${agent.name} is playing...` : `${agent.name} is ready`}
           </p>
+        </div>
+      )}
+      
+      {/* Explanation Display */}
+      {showExplanations && (
+        <div className="mt-4 p-3 rounded-lg animate-fade-in" style={{ 
+          backgroundColor: '#FFF5EB',
+          border: '2px solid #F59563',
+          minHeight: '60px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {lastExplanation ? (
+            <p className="text-sm font-medium text-center" style={{ color: theme.ui.text.primary }}>
+              {lastExplanation}
+            </p>
+          ) : (
+            <p className="text-sm text-center italic" style={{ color: theme.ui.text.secondary }}>
+              Agent explanations will appear here when playing...
+            </p>
+          )}
         </div>
       )}
     </div>

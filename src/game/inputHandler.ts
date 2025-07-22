@@ -97,7 +97,17 @@ export class InputHandler {
   private handleTouchStart(event: TouchEvent): void {
     if (event.touches.length !== 1) return;
     
-    event.preventDefault();
+    // Check if the touch target is an interactive element
+    const target = event.target as HTMLElement;
+    const isInteractive = target.tagName === 'A' || 
+                         target.tagName === 'BUTTON' || 
+                         target.tagName === 'INPUT' ||
+                         target.tagName === 'SELECT' ||
+                         target.closest('a, button, input, select');
+    
+    // Don't track touches on interactive elements
+    if (isInteractive) return;
+    
     const touch = event.touches[0];
     this.touchStartX = touch.clientX;
     this.touchStartY = touch.clientY;
@@ -107,13 +117,22 @@ export class InputHandler {
 
   private handleTouchMove(event: TouchEvent): void {
     if (!this.isTouching || event.touches.length !== 1) return;
-    event.preventDefault();
+    
+    // Calculate movement to determine if this is a swipe
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - this.touchStartX;
+    const deltaY = touch.clientY - this.touchStartY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Only prevent default if movement exceeds tap threshold (10px)
+    if (distance > 10) {
+      event.preventDefault();
+    }
   }
 
   private handleTouchEnd(event: TouchEvent): void {
     if (!this.isTouching) return;
     
-    event.preventDefault();
     const touch = event.changedTouches[0];
     const deltaX = touch.clientX - this.touchStartX;
     const deltaY = touch.clientY - this.touchStartY;
@@ -123,13 +142,27 @@ export class InputHandler {
     
     const direction = this.detectSwipeDirection(deltaX, deltaY, deltaTime);
     if (direction !== null) {
+      // Only prevent default if we detected a swipe
+      event.preventDefault();
       this.notifyCallbacks(direction);
     }
+    // If no swipe detected, let the tap/click through
   }
 
   private handleMouseDown(event: MouseEvent): void {
     // Only handle left mouse button
     if (event.button !== 0) return;
+    
+    // Check if the mouse target is an interactive element
+    const target = event.target as HTMLElement;
+    const isInteractive = target.tagName === 'A' || 
+                         target.tagName === 'BUTTON' || 
+                         target.tagName === 'INPUT' ||
+                         target.tagName === 'SELECT' ||
+                         target.closest('a, button, input, select');
+    
+    // Don't track mouse on interactive elements
+    if (isInteractive) return;
     
     this.touchStartX = event.clientX;
     this.touchStartY = event.clientY;
@@ -139,7 +172,16 @@ export class InputHandler {
 
   private handleMouseMove(event: MouseEvent): void {
     if (!this.isTouching) return;
-    event.preventDefault();
+    
+    // Calculate movement to determine if this is a drag
+    const deltaX = event.clientX - this.touchStartX;
+    const deltaY = event.clientY - this.touchStartY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Only prevent default if movement exceeds tap threshold (10px)
+    if (distance > 10) {
+      event.preventDefault();
+    }
   }
 
   private handleMouseUp(event: MouseEvent): void {
