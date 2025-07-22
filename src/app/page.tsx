@@ -43,7 +43,7 @@ export default function Home() {
               onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
             >
               <h2 className="text-2xl font-bold mb-2" style={{ color: theme.ui.text.primary }}>
-                Classic Mode
+                🎮 Classic Mode
               </h2>
               <p style={{ color: theme.ui.text.secondary }}>
                 Play the original 2048 experience. Combine tiles to reach 2048!
@@ -63,7 +63,7 @@ export default function Home() {
               onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
             >
               <h2 className="text-2xl font-bold mb-2" style={{ color: theme.ui.text.primary }}>
-                Agent Mode
+                🤖 Agent Mode
               </h2>
               <p style={{ color: theme.ui.text.secondary }}>
                 Watch AI agents play! Choose strategies and learn from their moves.
@@ -74,7 +74,7 @@ export default function Home() {
         
         {/* Footer */}
         <div className="mt-16 text-sm" style={{ color: theme.ui.text.tertiary }}>
-          <p>Built with love and AI assistance</p>
+          <p>Built with ❤️ and AI assistance</p>
           <p className="mt-2">
             Based on{' '}
             <a 

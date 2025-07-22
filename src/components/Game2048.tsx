@@ -352,7 +352,7 @@ export default function Game2048() {
             <div className="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <div className="text-center text-white">
                 <h2 className="text-5xl font-bold mb-6">
-                  {hasWon ? 'You Win!' : 'Game Over'}
+                  {hasWon ? '🎉 You Win!' : 'Game Over'}
                 </h2>
                 <p className="text-xl mb-6 opacity-90">
                   Score: {score.toLocaleString()}
@@ -429,7 +429,7 @@ export default function Game2048() {
             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            Try Classic Mode →
+            🎮 Try Classic Mode →
           </Link>
         </div>
       </div>

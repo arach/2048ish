@@ -123,7 +123,7 @@ export function AgentControls({ onMove, getGameState, onExplanation, onPlayingSt
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm" style={{ backgroundColor: theme.ui.card.background }}>
       <h3 className="text-lg font-semibold mb-2" style={{ color: theme.ui.text.primary }}>
-        AI Agent Controls
+        🤖 AI Agent Controls
       </h3>
       <p className="text-xs mb-3" style={{ color: theme.ui.text.secondary }}>
         Let an AI play for you! Choose a strategy and watch it work.
