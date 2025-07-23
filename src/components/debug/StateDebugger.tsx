@@ -299,7 +299,15 @@ export const StateDebugger = forwardRef<any, StateDebuggerProps>(({
                   </div>
                   <div>
                     <div className="text-gray-400 mb-1">Moves</div>
-                    <div className="text-xl font-mono text-white">{gameState?.moves || 0}</div>
+                    <div className="text-xl font-mono text-white">
+                      {(() => {
+                        // Try to get the most accurate move count from multiple sources
+                        const gameStateMove = gameState?.moves || 0;
+                        const gameRefMoves = gameRef?.current?.getStats?.()?.moves;
+                        const effectiveCount = gameRefMoves !== undefined ? gameRefMoves : gameStateMove;
+                        return effectiveCount;
+                      })()}
+                    </div>
                   </div>
                   <div>
                     <div className="text-gray-400 mb-1">Max Tile</div>

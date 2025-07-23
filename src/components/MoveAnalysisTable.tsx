@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { theme } from '../theme/colors';
 
 export interface MoveAnalysis {
@@ -38,6 +38,7 @@ export interface MoveAnalysis {
 interface MoveAnalysisTableProps {
   moves: MoveAnalysis[];
   isPlaying: boolean;
+  onClear?: () => void;
 }
 
 // Helper function to get tile colors matching the game
@@ -89,7 +90,7 @@ function MoveOption({ direction, analysis, isChosen }: MoveOptionProps) {
         {direction === 'right' && '→'}
       </span>
       {isChosen && (
-        <span className="font-bold text-xs">{analysis.score}</span>
+        <span className="font-bold text-xs">{Math.round(analysis.score)}</span>
       )}
       <span className="text-[10px] opacity-75">
         {analysis.merges > 0 ? `${analysis.merges}M` : ''}
@@ -108,7 +109,7 @@ interface SideBySideMiniBoards {
 }
 
 function SideBySideMiniBoards({ boardBefore, boardAfter, direction }: SideBySideMiniBoards) {
-  if (!boardAfter) return null;
+  if (!boardBefore) return null;
   
   return (
     <div className="flex gap-1 items-center flex-shrink-0">
@@ -144,7 +145,7 @@ function SideBySideMiniBoards({ boardBefore, boardAfter, direction }: SideBySide
       
       {/* After grid */}
       <div className="grid grid-cols-4 gap-0.5 w-16 h-16">
-        {boardAfter.flat().map((value, idx) => (
+        {(boardAfter ? boardAfter.flat() : Array(16).fill(null)).map((value, idx) => (
           <div 
             key={idx}
             className="flex items-center justify-center text-xs font-bold rounded-sm"
@@ -165,19 +166,82 @@ function SideBySideMiniBoards({ boardBefore, boardAfter, direction }: SideBySide
   );
 }
 
-export function MoveAnalysisTable({ moves, isPlaying }: MoveAnalysisTableProps) {
+export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTableProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-scroll to bottom when new moves are added, unless user is actively scrolling
+  useEffect(() => {
+    if (!isUserScrolling && scrollContainerRef.current && moves.length > 0) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [moves.length, isUserScrolling]);
+
+  // Handle scroll events to detect user interaction
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // 10px tolerance
+    
+    if (isAtBottom) {
+      setIsUserScrolling(false);
+    } else {
+      setIsUserScrolling(true);
+    }
+    
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // Set timeout to re-enable auto-scroll after user stops scrolling
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (scrollContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
+        if (isAtBottom) {
+          setIsUserScrolling(false);
+        }
+      }
+    }, 1000);
+  };
   return (
     <div className="bg-white rounded-lg shadow-lg h-full flex flex-col" style={{ backgroundColor: theme.ui.card.background }}>
       <div className="p-4 border-b" style={{ borderColor: theme.ui.card.border }}>
-        <h3 className="text-lg font-semibold" style={{ color: theme.ui.text.primary }}>
-          Move Analysis
-        </h3>
-        <p className="text-xs mt-1" style={{ color: theme.ui.text.secondary }}>
-          {isPlaying ? 'Recording moves...' : moves.length > 0 ? `${moves.length} moves recorded` : 'Start agent to see analysis'}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold" style={{ color: theme.ui.text.primary }}>
+              Move Analysis
+            </h3>
+            <p className="text-xs mt-1" style={{ color: theme.ui.text.secondary }}>
+              {isPlaying ? 'Recording moves...' : moves.length > 0 ? `${moves.length} moves recorded` : 'Start agent to see analysis'}
+            </p>
+          </div>
+          {onClear && moves.length > 0 && (
+            <button
+              onClick={onClear}
+              className="px-3 py-1 rounded text-xs font-medium transition-colors"
+              style={{
+                backgroundColor: theme.ui.button.secondary.background,
+                color: theme.ui.button.secondary.text,
+                border: `1px solid ${theme.ui.card.border}`
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.ui.button.secondary.hover}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.ui.button.secondary.background}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-2">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-2"
+        onScroll={handleScroll}
+      >
         {moves.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm" style={{ color: theme.ui.text.tertiary }}>
@@ -201,7 +265,7 @@ export function MoveAnalysisTable({ moves, isPlaying }: MoveAnalysisTableProps) 
                     #{move.moveNumber}
                   </span>
                   <span className="text-xs ml-auto" style={{ color: theme.ui.text.secondary }}>
-                    Score: {move.score.toLocaleString()}
+                    Score: {Math.round(move.score).toLocaleString()}
                     {move.boardAnalysis && (
                       <>
                         {' • '}
@@ -275,6 +339,17 @@ export function MoveAnalysisTable({ moves, isPlaying }: MoveAnalysisTableProps) 
                     <div></div>
                   </div>
                 </div>
+                
+                {/* Show explanation if available */}
+                {move.explanation && (
+                  <div className="mt-2 p-2 rounded text-xs" style={{ 
+                    backgroundColor: theme.ui.card.background,
+                    border: `1px solid ${theme.ui.card.border}`,
+                    color: theme.ui.text.secondary 
+                  }}>
+                    <strong>Reasoning:</strong> {move.explanation}
+                  </div>
+                )}
               </div>
             ))}
           </div>

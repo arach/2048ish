@@ -17,6 +17,7 @@ export class GameManager {
   private config: Required<GameManagerConfig>;
   private listeners: Set<(state: GameState) => void> = new Set();
   private randomGenerator: RandomGenerator;
+  private totalMoves: number = 0; // Track total moves regardless of history trimming
 
   constructor(config: GameManagerConfig = {}) {
     this.config = {
@@ -53,6 +54,7 @@ export class GameManager {
       states: [initialState],
       currentIndex: 0
     };
+    this.totalMoves = 0; // Reset total move counter
     this.saveToStorage();
     this.notifyListeners();
   }
@@ -105,6 +107,7 @@ export class GameManager {
     // Add the new state
     this.history.states.push(state);
     this.history.currentIndex++;
+    this.totalMoves++; // Increment total move counter
     
     // Trim history if it exceeds max size
     if (this.history.states.length > this.config.maxHistorySize) {
@@ -262,7 +265,7 @@ export class GameManager {
     
     return {
       score: state.score,
-      moves: this.history.currentIndex,
+      moves: this.totalMoves,
       maxTile,
       isGameOver: state.isGameOver,
       hasWon: state.hasWon

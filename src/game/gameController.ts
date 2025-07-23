@@ -49,7 +49,6 @@ export class GameController {
     from: [number, number][] | null; // null for new tiles, array of positions for moved/merged
     moveNumber: number;
   }> = new Map();
-  private moveCount: number = 0;
 
   constructor(config: GameControllerConfig) {
     this.config = config;
@@ -138,9 +137,6 @@ export class GameController {
       this.processNextQueuedMove();
       return;
     }
-    
-    // Increment move counter
-    this.moveCount++;
     
     // Start animation
     this.isAnimating = true;
@@ -241,7 +237,7 @@ export class GameController {
       this.config.onMoveComplete({
         grid,
         score: currentState.score,
-        moveCount: this.moveCount,
+        moveCount: this.gameManager.getStats().moves,
         lastDirection: this.lastDirection,
         maxTile,
         emptyTiles,
@@ -280,9 +276,9 @@ export class GameController {
       const debugMode = this.renderer.getDebugMode();
       // Always pass the current debug states to the renderer, even if empty
       this.renderer.setDebugMode(debugMode, this.debugTileStates);
-      // Only log when there are states to report
+      // Log when there are states to report
       if (this.debugTileStates.size > 0) {
-        // console.log('[GameController] render() - Debug mode:', debugMode, 'Debug states:', this.debugTileStates.size);
+        console.log('[GameController] render() - Debug mode:', debugMode, 'Debug states:', this.debugTileStates.size);
       }
     }
   }
@@ -296,7 +292,6 @@ export class GameController {
     this.lastMoves = [];
     this.debugMoves = [];
     this.hasCompletedFirstMove = false;
-    this.moveCount = 0;
     this.gameManager.newGame();
   }
 

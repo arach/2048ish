@@ -2,6 +2,7 @@ import { GameAgent, GameState, Direction, AgentConfig, PlayStrategy } from './ty
 import { CornerStrategy } from './strategies/cornerStrategy';
 import { SnakeStrategy } from './strategies/snakeStrategy';
 import { GreedyStrategy } from './strategies/greedyStrategy';
+import { ExpectimaxStrategy } from './strategies/expectimaxStrategy';
 
 export class AlgorithmicAgent implements GameAgent {
   name: string;
@@ -31,6 +32,8 @@ export class AlgorithmicAgent implements GameAgent {
         return new SnakeStrategy();
       case 'greedy':
         return new GreedyStrategy();
+      case 'expectimax':
+        return new ExpectimaxStrategy();
       case 'corner':
       default:
         return new CornerStrategy();
@@ -54,7 +57,7 @@ export class AlgorithmicAgent implements GameAgent {
     
     if (move && this.explainMoves) {
       const explanation = this.strategy.explainMove(move, gameState);
-      // console.log(explanation);
+      console.log('[Agent] Move explanation:', explanation);
       if (this.onExplanation) {
         this.onExplanation(explanation);
       }

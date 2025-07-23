@@ -24,20 +24,8 @@ export default function Game2048() {
   const [agentExplanation, setAgentExplanation] = useState<string>('');
   const [moveAnalyses, setMoveAnalyses] = useState<MoveAnalysis[]>([]);
   const [isAgentPlaying, setIsAgentPlaying] = useState(false);
+  const [sessionMoveCount, setSessionMoveCount] = useState(0);
   const previousBoardRef = useRef<(number | null)[][] | null>(null);
-  const pendingAgentMoveRef = useRef<{
-    direction: Direction; 
-    boardBefore: (number | null)[][] | null;
-    alternatives?: {
-      validMoves: string[];
-      analysis: Record<string, {
-        merges: number;
-        emptyAfter: number;
-        maxTilePosition: string;
-        reasoning: string;
-      }>;
-    };
-  } | null>(null);
   
   // Debug state
   const [debugGameState, setDebugGameState] = useState<any>(null);
@@ -73,21 +61,28 @@ export default function Game2048() {
       onGameOver: () => setGameOver(true),
       onWin: () => setHasWon(true),
       onMoveComplete: (boardState) => {
-        // Check if this is an agent move we're tracking
-        if (pendingAgentMoveRef.current && boardState.lastDirection === pendingAgentMoveRef.current.direction) {
-          const { boardBefore, alternatives } = pendingAgentMoveRef.current;
+        // Get the current move count directly from the game manager
+        const gameStats = controllerRef.current?.getStats();
+        const currentMoveCount = gameStats?.moves || 0;
+        
+        console.log(`[Move] onMoveComplete - move #${currentMoveCount}, score: ${boardState.score}`);
+        
+        // Only process if this is a new move (count increased)
+        if (currentMoveCount > sessionMoveCount) {
           const boardAfter = boardState.grid.map(row => [...row]);
+          const boardBefore = previousBoardRef.current;
           
-          // Verify the board actually changed
-          const boardChanged = JSON.stringify(boardBefore) !== JSON.stringify(boardAfter);
+          console.log(`[Count] Move count update: ${sessionMoveCount} → ${currentMoveCount}`);
+          setSessionMoveCount(currentMoveCount);
           
-          if (boardChanged && boardBefore) {
+          // Create move analysis if we have previous board state
+          if (boardBefore) {
             const analysis: MoveAnalysis = {
-              moveNumber: boardState.moveCount,
-              direction: boardState.lastDirection!,
+              moveNumber: currentMoveCount,
+              direction: boardState.lastDirection || 'unknown',
               score: boardState.score,
               maxTile: boardState.maxTile,
-              explanation: '', // Will be updated when explanation comes
+              explanation: agentExplanation || '',
               boardStateBefore: boardBefore,
               boardState: boardAfter,
               boardAnalysis: {
@@ -95,14 +90,20 @@ export default function Game2048() {
                 possibleMerges: boardState.possibleMerges,
                 cornerPosition: isMaxTileInCorner(boardAfter)
               },
-              alternatives
+              alternatives: currentMoveAlternatives.current
             };
             
+            console.log(`[Analysis] Adding move analysis for move #${currentMoveCount}`);
             setMoveAnalyses(prev => [...prev, analysis]);
+            
+            // Clear the alternatives after use
+            currentMoveAlternatives.current = null;
           }
           
-          // Clear the pending move
-          pendingAgentMoveRef.current = null;
+          // Update previous board state for next move
+          previousBoardRef.current = boardAfter;
+        } else {
+          console.log(`[Count] Move count unchanged (${currentMoveCount}), skipping analysis`);
         }
       },
       animationStyle: animationMode,
@@ -133,18 +134,21 @@ export default function Game2048() {
         
         const moves = controller.getLastMoveInfo ? controller.getLastMoveInfo() : [];
         
-        setDebugGameState({
-          ...state,
-          moves: controller.getStats?.()?.moves || 0,
-          maxTile: state.grid ? Math.max(...state.grid.flat().filter((cell): cell is number => cell !== null)) : 0,
-          tileStates: tileStatesObj,
-          lastMoves: moves
+        setDebugGameState(prev => {
+          const newState = {
+            ...state,
+            moves: sessionMoveCount, // Use session move count instead of game manager count
+            maxTile: state.grid ? Math.max(...state.grid.flat().filter((cell): cell is number => cell !== null)) : 0,
+            tileStates: tileStatesObj,
+            lastMoves: moves
+          };
+          return newState;
         });
         
-        // Log only when there's something meaningful to report
-        // if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
-        //   console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
-        // }
+        // Log debug state updates when there's something meaningful
+        if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
+          console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
+        }
       }
     };
 
@@ -162,6 +166,9 @@ export default function Game2048() {
     const unsubscribe = controller.subscribeToGameState?.(() => {
       updateUndoRedo();
     });
+    
+    // Disabled interval to prevent re-render storm
+    // const debugUpdateInterval = setInterval(() => { ... }, 100);
     
     // Update animation state for debug
     if (controller.getAnimationState) {
@@ -191,17 +198,24 @@ export default function Game2048() {
 
     return () => {
       if (unsubscribe) unsubscribe();
+      // clearInterval(debugUpdateInterval);
       controller.destroy();
     };
-  }, [bestScore, animationMode, isAgentPlaying]);
+  }, [bestScore, animationMode]);
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
       controllerRef.current.newGame();
       setGameOver(false);
       setHasWon(false);
-      setMoveAnalyses([]);
+      // DON'T clear move analyses - let them persist across games
+      // setMoveAnalyses([]);
       setAgentExplanation('');
+      
+      // Reset session move count to match the new game
+      setSessionMoveCount(0);
+      currentMoveAlternatives.current = null;
+      console.log('[Game] New game started - session count reset to 0');
       
       // Reset the sliding window with the new board state
       const state = controllerRef.current.getGameState?.();
@@ -224,23 +238,25 @@ export default function Game2048() {
   }, []);
 
   
+  const currentMoveAlternatives = useRef<any>(null);
+  
   const handleAgentMove = useCallback((direction: Direction, stateBefore?: GameState, agent?: AlgorithmicAgent) => {
+    console.log(`[Move] Agent initiating move: ${direction}`);
     if (controllerRef.current) {
-      // Capture the board state BEFORE the move (from the agent's perspective)
-      const boardBefore = stateBefore ? (stateBefore.grid as (number | null)[][]).map(row => [...row]) : null;
-      
-      // Get move alternatives analysis from the agent
-      let alternatives = undefined;
-      if (agent && stateBefore) {
-        alternatives = agent.getMoveAlternatives(stateBefore);
+      // Store current board state for the next analysis
+      const currentState = controllerRef.current.getGameState();
+      if (currentState?.grid) {
+        previousBoardRef.current = currentState.grid.map(row => [...row]);
+        console.log(`[Move] Stored board state for analysis`);
       }
       
-      // Store the pending move data for processing in onMoveComplete
-      pendingAgentMoveRef.current = {
-        direction,
-        boardBefore,
-        alternatives
-      };
+      // Store alternatives for the upcoming analysis
+      if (agent && stateBefore) {
+        currentMoveAlternatives.current = agent.getMoveAlternatives(stateBefore);
+        console.log(`[Move] Captured alternatives for analysis:`, currentMoveAlternatives.current?.validMoves);
+      } else {
+        currentMoveAlternatives.current = null;
+      }
       
       // Make the move - this will trigger animations and eventually call onMoveComplete
       controllerRef.current.move(direction);
@@ -249,15 +265,8 @@ export default function Game2048() {
   
   const handleAgentExplanation = useCallback((explanation: string) => {
     setAgentExplanation(explanation);
-    // Update the last move with its explanation
-    if (explanation) {
-      setMoveAnalyses(prev => {
-        if (prev.length === 0) return prev;
-        const updated = [...prev];
-        updated[updated.length - 1].explanation = explanation;
-        return updated;
-      });
-    } else {
+    
+    if (!explanation) {
       // Empty explanation means agent stopped
       setIsAgentPlaying(false);
     }
@@ -294,6 +303,16 @@ export default function Game2048() {
       moveCount: controllerRef.current.getStats?.()?.moves || 0
     };
   }, [gameOver]);
+  
+  const handleClearAnalysis = useCallback(() => {
+    console.log(`[Analysis] Clearing move analysis table`);
+    setMoveAnalyses([]);
+    // Keep session count in sync with actual game state
+    const gameStats = controllerRef.current?.getStats();
+    const currentMoveCount = gameStats?.moves || 0;
+    setSessionMoveCount(currentMoveCount);
+    console.log(`[Count] Session count synced to ${currentMoveCount}`);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden" 
@@ -446,6 +465,7 @@ export default function Game2048() {
             <MoveAnalysisTable 
               moves={moveAnalyses} 
               isPlaying={isAgentPlaying}
+              onClear={handleClearAnalysis}
             />
           </div>
         </div>

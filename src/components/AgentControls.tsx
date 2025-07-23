@@ -16,6 +16,7 @@ const strategies = [
   { id: 'corner', name: 'Corner Master', description: 'Keeps big tiles in corner' },
   { id: 'snake', name: 'Snake Builder', description: 'Builds in zigzag pattern' },
   { id: 'greedy', name: 'Merge Monster', description: 'Maximizes merges' },
+  { id: 'expectimax', name: 'Expectimax', description: 'Uses expectimax search with weighted heuristics' },
 ];
 
 export function AgentControls({ onMove, getGameState, onExplanation, onPlayingStateChange }: AgentControlsProps) {
