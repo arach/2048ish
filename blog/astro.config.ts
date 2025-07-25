@@ -14,9 +14,8 @@ import remarkTOC from './src/plugins/remark-toc.mjs'
 import { themeConfig } from './src/config'
 import { imageConfig } from './src/utils/image-config'
 import path from 'path'
-import netlify from '@astrojs/netlify'
-
 export default defineConfig({
+  output: 'static',
   site: 'https://arach.github.io',
   base: '/2048ish/blog',
   outDir: '../out/blog',
