@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { theme } from '../theme/colors';
+import { getBlogUrl } from '../lib/paths';
 
 export default function Home() {
   return (
@@ -97,7 +98,7 @@ export default function Home() {
           <p>Built with ❤️ and AI assistance</p>
           <p className="mt-2">
             <a 
-              href="/blog" 
+              href={getBlogUrl()} 
               className="underline hover:no-underline mr-4"
               style={{ color: theme.ui.accent }}
             >
