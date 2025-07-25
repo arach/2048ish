@@ -51,6 +51,26 @@ export default function Home() {
             </div>
           </Link>
           
+          {/* Coach Mode */}
+          <Link href="/coach" className="block">
+            <div 
+              className="p-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+              style={{ 
+                backgroundColor: theme.ui.card.background,
+                border: `2px solid transparent`
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = theme.ui.accent}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
+            >
+              <h2 className="text-2xl font-bold mb-2" style={{ color: theme.ui.text.primary }}>
+                🎯 Coach Mode
+              </h2>
+              <p style={{ color: theme.ui.text.secondary }}>
+                Play with AI coaching! Get real-time feedback and improve your strategy.
+              </p>
+            </div>
+          </Link>
+          
           {/* Agent Mode */}
           <Link href="/agent" className="block">
             <div 
@@ -76,6 +96,13 @@ export default function Home() {
         <div className="mt-16 text-sm" style={{ color: theme.ui.text.tertiary }}>
           <p>Built with ❤️ and AI assistance</p>
           <p className="mt-2">
+            <a 
+              href="/blog" 
+              className="underline hover:no-underline mr-4"
+              style={{ color: theme.ui.accent }}
+            >
+              📝 Read the blog
+            </a>
             Based on{' '}
             <a 
               href="https://play2048.co/" 

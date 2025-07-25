@@ -1,7 +1,7 @@
 {
-  "name": "astro-chiri",
+  "name": "2048ish-blog",
   "type": "module",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "license": "MIT",
   "scripts": {
     "dev": "astro dev",
@@ -13,8 +13,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "new": "tsx scripts/new-post.ts",
-    "update-theme": "tsx scripts/update-theme.ts"
+    "new": "tsx scripts/new-post.ts"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.1",

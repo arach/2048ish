@@ -3,6 +3,7 @@ import { CornerStrategy } from './strategies/cornerStrategy';
 import { SnakeStrategy } from './strategies/snakeStrategy';
 import { GreedyStrategy } from './strategies/greedyStrategy';
 import { ExpectimaxStrategy } from './strategies/expectimaxStrategy';
+import { SmoothnessStrategy } from './strategies/smoothnessStrategy';
 
 export class AlgorithmicAgent implements GameAgent {
   name: string;
@@ -34,6 +35,8 @@ export class AlgorithmicAgent implements GameAgent {
         return new GreedyStrategy();
       case 'expectimax':
         return new ExpectimaxStrategy();
+      case 'smoothness':
+        return new SmoothnessStrategy();
       case 'corner':
       default:
         return new CornerStrategy();

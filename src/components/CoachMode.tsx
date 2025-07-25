@@ -4,15 +4,13 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameController } from '../game/gameController';
 import { DebugOverlay } from './debug/DebugOverlay';
 import { NavBar } from './NavBar';
-import { AgentControls } from './AgentControls';
-import { MoveAnalysisTable, MoveAnalysis } from './MoveAnalysisTable';
-type SessionMetadata = import('./MoveAnalysisTable').SessionMetadata;
+import { CoachingPanel } from './CoachingPanel';
 import { theme } from '../theme/colors';
 import { Direction, GameState } from '../agents/types';
 import { AlgorithmicAgent } from '../agents/algorithmicAgent';
 import Link from 'next/link';
 
-export default function Game2048() {
+export default function CoachMode() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<GameController | null>(null);
   const [score, setScore] = useState(0);
@@ -22,13 +20,28 @@ export default function Game2048() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [animationMode] = useState<'minimal' | 'playful'>('playful');
-  const [agentExplanation, setAgentExplanation] = useState<string>('');
-  const [moveAnalyses, setMoveAnalyses] = useState<MoveAnalysis[]>([]);
-  const [isAgentPlaying, setIsAgentPlaying] = useState(false);
   const [sessionMoveCount, setSessionMoveCount] = useState(0);
   const previousBoardRef = useRef<(number | null)[][] | null>(null);
-  const [currentAgent, setCurrentAgent] = useState<AlgorithmicAgent | null>(null);
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  const [coachingEnabled, setCoachingEnabled] = useState(true);
+  const [coachingStrategies, setCoachingStrategies] = useState<string[]>(['corner', 'smoothness', 'expectimax']);
+  const [lastMoveAnalysis, setLastMoveAnalysis] = useState<{
+    humanMove: Direction;
+    aiSuggestions: Record<string, {
+      suggestion: Direction;
+      confidence: number;
+      reasoning: string;
+      alternatives: any;
+    }>;
+    moveFeedback: string;
+    consensus: {
+      agreement: number;
+      bestAlternative?: {
+        move: Direction;
+        supporters: string[];
+        reason: string;
+      };
+    };
+  } | null>(null);
   
   // Debug state
   const [debugGameState, setDebugGameState] = useState<any>(null);
@@ -63,50 +76,28 @@ export default function Game2048() {
       },
       onGameOver: () => setGameOver(true),
       onWin: () => setHasWon(true),
-      onMoveComplete: (boardState) => {
+      onMoveComplete: async (boardState) => {
         // Get the current move count directly from the game manager
         const gameStats = controllerRef.current?.getStats();
         const currentMoveCount = gameStats?.moves || 0;
         
-        console.log(`[Move] onMoveComplete - move #${currentMoveCount}, score: ${boardState.score}`);
+        console.log(`[Coach] Human move completed - move #${currentMoveCount}, score: ${boardState.score}`);
         
         // Only process if this is a new move (count increased)
         if (currentMoveCount > sessionMoveCount) {
           const boardAfter = boardState.grid.map(row => [...row]);
           const boardBefore = previousBoardRef.current;
           
-          console.log(`[Count] Move count update: ${sessionMoveCount} → ${currentMoveCount}`);
+          console.log(`[Coach] Analyzing human move: ${sessionMoveCount} → ${currentMoveCount}`);
           setSessionMoveCount(currentMoveCount);
           
-          // Create move analysis if we have previous board state
-          if (boardBefore) {
-            const analysis: MoveAnalysis = {
-              moveNumber: currentMoveCount,
-              direction: boardState.lastDirection || 'unknown',
-              score: boardState.score,
-              maxTile: boardState.maxTile,
-              explanation: agentExplanation || '',
-              boardStateBefore: boardBefore,
-              boardState: boardAfter,
-              boardAnalysis: {
-                emptyTiles: boardState.emptyTiles,
-                possibleMerges: boardState.possibleMerges,
-                cornerPosition: isMaxTileInCorner(boardAfter)
-              },
-              alternatives: currentMoveAlternatives.current
-            };
-            
-            console.log(`[Analysis] Adding move analysis for move #${currentMoveCount}`);
-            setMoveAnalyses(prev => [...prev, analysis]);
-            
-            // Clear the alternatives after use
-            currentMoveAlternatives.current = null;
+          // Analyze the human's move with AI coaches (only if coaching is enabled)
+          if (coachingEnabled && boardBefore && boardState.lastDirection) {
+            await analyzeHumanMove(boardBefore, boardAfter, boardState.lastDirection as Direction);
           }
           
           // Update previous board state for next move
           previousBoardRef.current = boardAfter;
-        } else {
-          console.log(`[Count] Move count unchanged (${currentMoveCount}), skipping analysis`);
         }
       },
       animationStyle: animationMode,
@@ -140,23 +131,17 @@ export default function Game2048() {
         setDebugGameState(prev => {
           const newState = {
             ...state,
-            moves: sessionMoveCount, // Use session move count instead of game manager count
+            moves: sessionMoveCount,
             maxTile: state.grid ? Math.max(...state.grid.flat().filter((cell): cell is number => cell !== null)) : 0,
             tileStates: tileStatesObj,
             lastMoves: moves
           };
           return newState;
         });
-        
-        // Log debug state updates when there's something meaningful
-        if (Object.keys(tileStatesObj).length > 0 || moves.length > 0) {
-          console.log('[Game2048] Debug state update - Tile states:', Object.keys(tileStatesObj).length, 'Moves:', moves.length);
-        }
       }
     };
 
     // Subscribe to state changes
-    // Update immediately
     updateUndoRedo();
     
     // Initialize the sliding window with the starting board state
@@ -165,60 +150,145 @@ export default function Game2048() {
       previousBoardRef.current = initialState.grid.map(row => [...row]);
     }
     
-    // Subscribe to game state changes directly - no polling needed
     const unsubscribe = controller.subscribeToGameState?.(() => {
       updateUndoRedo();
     });
     
-    // Disabled interval to prevent re-render storm
-    // const debugUpdateInterval = setInterval(() => { ... }, 100);
-    
-    // Update animation state for debug
-    if (controller.getAnimationState) {
-      const animState = controller.getAnimationState();
-      setDebugAnimationState({
-        duration: animState.duration,
-        baseDuration: animState.baseDuration,
-        style: animationMode,
-        easing: 'ease-in-out',
-        activeCount: animState.activeCount,
-        isAnimating: animState.isAnimating,
-        lastAnimationTime: animState.lastAnimationTime
-      });
-      // console.log('[Game2048] Debug - Animation state:', debugAnimationState);
-    } else {
-      setDebugAnimationState({
-        duration: 150,
-        baseDuration: 150,
-        style: animationMode,
-        easing: 'ease-in-out',
-        activeCount: 0,
-        isAnimating: false,
-        lastAnimationTime: 0
-      });
-      // console.log('[Game2048] Debug - Animation state (else):', debugAnimationState);
-    }
-
     return () => {
       if (unsubscribe) unsubscribe();
-      // clearInterval(debugUpdateInterval);
       controller.destroy();
     };
-  }, [bestScore, animationMode]);
+  }, [bestScore, animationMode, sessionMoveCount, lastMoveAnalysis, coachingEnabled]);
+
+  const analyzeHumanMove = async (
+    boardBefore: (number | null)[][], 
+    boardAfter: (number | null)[][], 
+    humanMove: Direction
+  ) => {
+    console.log(`[Coach] Analyzing human move: ${humanMove}`);
+    
+    const gameState: GameState = {
+      grid: boardBefore,
+      score: score,
+      isGameOver: false,
+      moveCount: sessionMoveCount
+    };
+
+    const aiSuggestions: Record<string, {
+      suggestion: Direction;
+      confidence: number;
+      reasoning: string;
+      alternatives: any;
+    }> = {};
+
+    // Get suggestions from each coaching strategy
+    for (const strategyName of coachingStrategies) {
+      try {
+        const coach = new AlgorithmicAgent({ strategy: strategyName, explainMoves: true });
+        await coach.initialize();
+        
+        const suggestion = await coach.getNextMove(gameState);
+        const alternatives = coach.getMoveAlternatives(gameState);
+        
+        if (suggestion) {
+          // Calculate confidence based on how much better this move is vs alternatives
+          let confidence = 50; // Base confidence
+          if (alternatives?.analysis) {
+            const suggestionScore = (alternatives.analysis[suggestion] as any)?.score || 0;
+            const otherScores = Object.values(alternatives.analysis)
+              .map((alt: any) => alt.score || 0)
+              .filter(score => score !== suggestionScore);
+            
+            if (otherScores.length > 0) {
+              const avgOtherScore = otherScores.reduce((a, b) => a + b, 0) / otherScores.length;
+              confidence = Math.min(95, Math.max(5, 50 + (suggestionScore - avgOtherScore)));
+            }
+          }
+          
+          aiSuggestions[strategyName] = {
+            suggestion,
+            confidence,
+            reasoning: `${strategyName} strategy suggests ${suggestion.toUpperCase()}`,
+            alternatives
+          };
+        }
+      } catch (error) {
+        console.error(`[Coach] Error analyzing with ${strategyName}:`, error);
+      }
+    }
+
+    // Generate feedback about the human move
+    const { feedback, consensus } = generateMoveFeedback(humanMove, aiSuggestions);
+    
+    setLastMoveAnalysis({
+      humanMove,
+      aiSuggestions,
+      moveFeedback: feedback,
+      consensus
+    });
+  };
+
+  const generateMoveFeedback = (
+    humanMove: Direction, 
+    aiSuggestions: Record<string, { suggestion: Direction; confidence: number; reasoning: string }>
+  ): { feedback: string; consensus: { agreement: number; bestAlternative?: { move: Direction; supporters: string[]; reason: string } } } => {
+    const totalCoaches = Object.keys(aiSuggestions).length;
+    const agreements = Object.entries(aiSuggestions).filter(([_, ai]) => ai.suggestion === humanMove);
+    const disagreements = Object.entries(aiSuggestions).filter(([_, ai]) => ai.suggestion !== humanMove);
+    const agreementPercent = Math.round((agreements.length / totalCoaches) * 100);
+    
+    let feedback: string;
+    let bestAlternative = undefined;
+    
+    if (agreements.length === totalCoaches) {
+      feedback = `🎯 Perfect! All ${totalCoaches} coaches agree with ${humanMove.toUpperCase()}.`;
+    } else if (agreementPercent >= 75) {
+      feedback = `✅ Excellent choice! ${agreements.length}/${totalCoaches} coaches agree with ${humanMove.toUpperCase()}.`;
+    } else if (agreementPercent >= 50) {
+      feedback = `👍 Good move! Majority consensus on ${humanMove.toUpperCase()}.`;
+    } else if (disagreements.length > 0) {
+      // Find the most popular alternative
+      const alternativeCounts: Record<string, string[]> = {};
+      disagreements.forEach(([strategy, ai]) => {
+        if (!alternativeCounts[ai.suggestion]) {
+          alternativeCounts[ai.suggestion] = [];
+        }
+        alternativeCounts[ai.suggestion].push(strategy);
+      });
+      
+      const popularAlternative = Object.entries(alternativeCounts)
+        .reduce((best, [move, supporters]) => 
+          supporters.length > best.supporters.length ? { move: move as Direction, supporters } : best
+        );
+      
+      bestAlternative = {
+        move: popularAlternative.move,
+        supporters: popularAlternative.supporters,
+        reason: `${popularAlternative.supporters.length} coaches prefer this move`
+      };
+      
+      feedback = `🤔 Divergent opinions. ${popularAlternative.supporters.length} coaches suggest ${popularAlternative.move.toUpperCase()} instead.`;
+    } else {
+      feedback = `🎲 Unique choice! Let's see how ${humanMove.toUpperCase()} develops.`;
+    }
+    
+    return {
+      feedback,
+      consensus: {
+        agreement: agreementPercent,
+        bestAlternative
+      }
+    };
+  };
 
   const handleNewGame = useCallback(() => {
     if (controllerRef.current) {
       controllerRef.current.newGame();
       setGameOver(false);
       setHasWon(false);
-      // DON'T clear move analyses - let them persist across games
-      // setMoveAnalyses([]);
-      setAgentExplanation('');
-      
-      // Reset session move count to match the new game
       setSessionMoveCount(0);
-      currentMoveAlternatives.current = null;
-      console.log('[Game] New game started - session count reset to 0');
+      setLastMoveAnalysis(null);
+      console.log('[Coach] New game started - session count reset to 0');
       
       // Reset the sliding window with the new board state
       const state = controllerRef.current.getGameState?.();
@@ -240,50 +310,16 @@ export default function Game2048() {
     }
   }, []);
 
-  
-  const currentMoveAlternatives = useRef<any>(null);
-  
-  const handleAgentMove = useCallback((direction: Direction, stateBefore?: GameState, agent?: AlgorithmicAgent) => {
-    console.log(`[Move] Agent initiating move: ${direction}`);
-    if (controllerRef.current) {
-      // Track session start time and agent on first move
-      if (!sessionStartTime && agent) {
-        setSessionStartTime(Date.now());
-        setCurrentAgent(agent);
-        console.log(`[Session] Started tracking - agent: ${agent.name}`);
-      }
-      
-      // Store current board state for the next analysis
-      const currentState = controllerRef.current.getGameState();
-      if (currentState?.grid) {
-        previousBoardRef.current = currentState.grid.map(row => [...row]);
-        console.log(`[Move] Stored board state for analysis`);
-      }
-      
-      // Store alternatives for the upcoming analysis
-      if (agent && stateBefore) {
-        currentMoveAlternatives.current = agent.getMoveAlternatives(stateBefore);
-        console.log(`[Move] Captured alternatives for analysis:`, currentMoveAlternatives.current?.validMoves);
-      } else {
-        currentMoveAlternatives.current = null;
-      }
-      
-      // Make the move - this will trigger animations and eventually call onMoveComplete
-      controllerRef.current.move(direction);
-    }
-  }, [sessionStartTime]);
-  
-  const handleAgentExplanation = useCallback((explanation: string) => {
-    setAgentExplanation(explanation);
-    
-    if (!explanation) {
-      // Empty explanation means agent stopped
-      setIsAgentPlaying(false);
-    }
+  const handleClearAnalysis = useCallback(() => {
+    console.log(`[Coach] Clearing move analysis table`);
+    setMoveAnalyses([]);
+    // Keep session count in sync with actual game state
+    const gameStats = controllerRef.current?.getStats();
+    const currentMoveCount = gameStats?.moves || 0;
+    setSessionMoveCount(currentMoveCount);
+    console.log(`[Coach] Session count synced to ${currentMoveCount}`);
   }, []);
-  
-  // Helper functions for board analysis
-  
+
   const isMaxTileInCorner = (grid: (number | null)[][]): boolean => {
     const flatGrid = grid.flat().filter(Boolean) as number[];
     if (flatGrid.length === 0) return false;
@@ -293,50 +329,6 @@ export default function Game2048() {
       grid[grid.length - 1][0], grid[grid.length - 1][grid[0].length - 1]
     ];
     return corners.includes(maxTile);
-  };
-
-  const getGameState = useCallback((): GameState => {
-    if (!controllerRef.current) {
-      return {
-        grid: [[null, null, null, null], [null, null, null, null], [null, null, null, null], [null, null, null, null]],
-        score: 0,
-        isGameOver: true,
-        moveCount: 0
-      };
-    }
-    
-    const state = controllerRef.current.getGameState?.() || {};
-    return {
-      grid: state.grid || [[null, null, null, null], [null, null, null, null], [null, null, null, null], [null, null, null, null]],
-      score: state.score || 0,
-      isGameOver: gameOver,
-      moveCount: controllerRef.current.getStats?.()?.moves || 0
-    };
-  }, [gameOver]);
-  
-  const handleClearAnalysis = useCallback(() => {
-    console.log(`[Analysis] Clearing move analysis table`);
-    setMoveAnalyses([]);
-    // Reset session metadata
-    setSessionStartTime(null);
-    setCurrentAgent(null);
-    // Keep session count in sync with actual game state
-    const gameStats = controllerRef.current?.getStats();
-    const currentMoveCount = gameStats?.moves || 0;
-    setSessionMoveCount(currentMoveCount);
-    console.log(`[Count] Session count synced to ${currentMoveCount}`);
-  }, []);
-
-  // Create session metadata for export
-  const sessionMetadata: SessionMetadata = {
-    strategy: currentAgent?.name || 'unknown',
-    speed: 1, // Default speed, will be updated when agent API allows access
-    startTime: sessionStartTime || undefined,
-    endTime: isAgentPlaying ? undefined : Date.now(),
-    totalMoves: moveAnalyses.length,
-    finalScore: score,
-    maxTileAchieved: moveAnalyses.length > 0 ? Math.max(...moveAnalyses.map(m => m.maxTile)) : 0,
-    gameVersion: '1.0'
   };
 
   return (
@@ -383,7 +375,6 @@ export default function Game2048() {
             <div className="text-2xl font-bold" style={{ color: theme.ui.text.primary }}>{bestScore.toLocaleString()}</div>
           </div>
         </div>
-
 
         <div className="relative">
           <canvas
@@ -450,49 +441,98 @@ export default function Game2048() {
         </div>
         
         <div className="mt-3 text-center text-sm space-y-1">
-          <p className="font-semibold" style={{ color: theme.ui.text.primary }}>HOW TO PLAY</p>
-          <p style={{ color: theme.ui.text.secondary }}>Use arrow keys to move tiles. When two tiles with the same number touch, they merge into one!</p>
+          <p className="font-semibold" style={{ color: theme.ui.text.primary }}>COACH MODE</p>
+          <p style={{ color: theme.ui.text.secondary }}>Play normally - AI coaches will analyze your moves!</p>
         </div>
         
-        {/* Agent Controls */}
+        {/* Coaching Panel */}
         <div className="mt-4 flex-shrink-0">
-          <AgentControls 
-            onMove={handleAgentMove} 
-            getGameState={getGameState}
-            onExplanation={handleAgentExplanation}
-            onPlayingStateChange={setIsAgentPlaying}
+          <CoachingPanel 
+            lastAnalysis={lastMoveAnalysis}
+            coachingStrategies={coachingStrategies}
+            onStrategiesChange={setCoachingStrategies}
+            isEnabled={coachingEnabled}
+            onToggle={setCoachingEnabled}
           />
-        </div>
-        
-        {/* Try Classic Mode CTA */}
-        <div className="mt-6 text-center pb-4">
-          <Link 
-            href="/play" 
-            className="inline-flex items-center text-sm font-medium transition-colors"
-            style={{ color: theme.ui.accent }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            🎮 Try Classic Mode →
-          </Link>
         </div>
       </div>
       </div>
       
-      {/* Move Analysis Column - Only show on larger screens */}
-      <div className="hidden xl:block w-[500px] p-4">
+      {/* Coaching Sidebar - Only show on larger screens */}
+      <div className="hidden xl:block w-[400px] p-4">
         <div className="h-full flex flex-col">
           {/* Spacer to align with score section */}
           <div style={{ height: '120px' }}></div>
           
-          {/* Move Analysis Table */}
+          {/* Extended Coaching Information */}
           <div className="flex-1" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-            <MoveAnalysisTable 
-              moves={moveAnalyses} 
-              isPlaying={isAgentPlaying}
-              onClear={handleClearAnalysis}
-              sessionMetadata={sessionMetadata}
-            />
+            <div className="bg-white rounded-lg shadow-lg h-full overflow-hidden" 
+                 style={{ backgroundColor: theme.ui.card.background }}>
+              <div className="p-4 border-b" style={{ borderColor: theme.ui.card.border }}>
+                <h3 className="text-lg font-semibold" style={{ color: theme.ui.text.primary }}>
+                  🎓 Learning Center
+                </h3>
+                <p className="text-xs mt-1" style={{ color: theme.ui.text.secondary }}>
+                  Strategy insights and improvement tips
+                </p>
+              </div>
+              
+              <div className="p-4 overflow-y-auto h-full">
+                {lastMoveAnalysis ? (
+                  <div className="space-y-4">
+                    {/* Strategy Comparison */}
+                    <div>
+                      <h4 className="text-sm font-medium mb-2" style={{ color: theme.ui.text.primary }}>
+                        Strategy Comparison
+                      </h4>
+                      <div className="space-y-2">
+                        {Object.entries(lastMoveAnalysis.aiSuggestions).map(([strategy, opinion]) => (
+                          <div key={strategy} className="flex items-center justify-between p-2 rounded" 
+                               style={{ backgroundColor: lastMoveAnalysis.humanMove === opinion.suggestion ? '#F0FDF4' : '#FEF2F2' }}>
+                            <span className="text-sm capitalize">{strategy}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono">{opinion.suggestion.toUpperCase()}</span>
+                              <span className="text-xs px-2 py-0.5 rounded-full" 
+                                    style={{ 
+                                      backgroundColor: lastMoveAnalysis.humanMove === opinion.suggestion ? '#16A34A' : '#DC2626',
+                                      color: 'white'
+                                    }}>
+                                {Math.round(opinion.confidence)}%
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Learning Tip */}
+                    <div className="border-t pt-4" style={{ borderColor: theme.ui.card.border }}>
+                      <h4 className="text-sm font-medium mb-2" style={{ color: theme.ui.text.primary }}>
+                        💡 Coaching Tip
+                      </h4>
+                      <p className="text-xs" style={{ color: theme.ui.text.secondary }}>
+                        {lastMoveAnalysis.consensus.agreement >= 75 
+                          ? "Great strategic thinking! High consensus moves usually lead to better board positions."
+                          : lastMoveAnalysis.consensus.bestAlternative
+                          ? `Consider the ${lastMoveAnalysis.consensus.bestAlternative.move.toUpperCase()} move next time - it has strong support from multiple strategies.`
+                          : "Explore different approaches to find what works best for your playstyle."
+                        }
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                    <div className="text-4xl mb-4">📚</div>
+                    <h4 className="text-sm font-medium mb-2" style={{ color: theme.ui.text.primary }}>
+                      Learning Insights
+                    </h4>
+                    <p className="text-xs" style={{ color: theme.ui.text.secondary }}>
+                      Start playing to see detailed strategy comparisons and personalized coaching tips!
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

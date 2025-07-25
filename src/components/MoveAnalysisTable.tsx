@@ -35,10 +35,22 @@ export interface MoveAnalysis {
   };
 }
 
+export interface SessionMetadata {
+  strategy?: string;
+  speed?: number;
+  startTime?: number;
+  endTime?: number;
+  totalMoves: number;
+  finalScore: number;
+  maxTileAchieved: number;
+  gameVersion?: string;
+}
+
 interface MoveAnalysisTableProps {
   moves: MoveAnalysis[];
   isPlaying: boolean;
   onClear?: () => void;
+  sessionMetadata?: SessionMetadata;
 }
 
 // Helper function to get tile colors matching the game
@@ -166,10 +178,219 @@ function SideBySideMiniBoards({ boardBefore, boardAfter, direction }: SideBySide
   );
 }
 
-export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTableProps) {
+// Export utility functions
+function formatBoardAsString(board: (number | null)[][]): string {
+  return board.map(row => 
+    row.map(cell => cell || '0').join(',')
+  ).join(';');
+}
+
+// Performance analysis functions
+function calculatePerformanceMetrics(moves: MoveAnalysis[]): string {
+  if (moves.length === 0) return 'No data';
+  
+  const recentMoves = moves.slice(-10); // Last 10 moves
+  const avgEmptyTiles = recentMoves.reduce((sum, m) => sum + (m.boardAnalysis?.emptyTiles || 0), 0) / recentMoves.length;
+  const avgMerges = recentMoves.reduce((sum, m) => sum + (m.boardAnalysis?.possibleMerges || 0), 0) / recentMoves.length;
+  const cornerRate = recentMoves.filter(m => m.boardAnalysis?.cornerPosition).length / recentMoves.length * 100;
+  
+  return `${avgEmptyTiles.toFixed(1)} empty, ${avgMerges.toFixed(1)} merges, ${cornerRate.toFixed(0)}% corner`;
+}
+
+function calculateMissedOpportunities(moves: MoveAnalysis[]): string {
+  if (moves.length === 0) return 'No data';
+  
+  let missedCount = 0;
+  let totalAnalyzed = 0;
+  let totalMissedPoints = 0;
+  
+  moves.forEach(move => {
+    if (move.alternatives?.analysis) {
+      const chosenScore = (move.alternatives.analysis[move.direction] as any)?.score || 0;
+      const allScores = Object.values(move.alternatives.analysis).map((alt: any) => alt.score || 0);
+      const bestScore = Math.max(...allScores);
+      
+      if (bestScore > chosenScore) {
+        missedCount++;
+        totalMissedPoints += (bestScore - chosenScore);
+      }
+      totalAnalyzed++;
+    }
+  });
+  
+  if (totalAnalyzed === 0) return 'No alternatives data';
+  
+  const missedRate = (missedCount / totalAnalyzed * 100).toFixed(0);
+  const avgMissed = missedCount > 0 ? (totalMissedPoints / missedCount).toFixed(1) : '0';
+  
+  return `${missedRate}% suboptimal (avg -${avgMissed} pts)`;
+}
+
+function downloadFile(content: string, filename: string, contentType: string): void {
+  const blob = new Blob([content], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function formatDataForJSON(moves: MoveAnalysis[], sessionMetadata?: SessionMetadata) {
+  const exportData = {
+    metadata: {
+      exportedAt: new Date().toISOString(),
+      gameVersion: sessionMetadata?.gameVersion || '1.0',
+      ...sessionMetadata
+    },
+    session: {
+      strategy: sessionMetadata?.strategy || 'unknown',
+      speed: sessionMetadata?.speed || 1,
+      startTime: sessionMetadata?.startTime ? new Date(sessionMetadata.startTime).toISOString() : null,
+      endTime: sessionMetadata?.endTime ? new Date(sessionMetadata.endTime).toISOString() : null,
+      duration: sessionMetadata?.startTime && sessionMetadata?.endTime 
+        ? sessionMetadata.endTime - sessionMetadata.startTime 
+        : null,
+      totalMoves: sessionMetadata?.totalMoves || moves.length,
+      finalScore: sessionMetadata?.finalScore || (moves.length > 0 ? moves[moves.length - 1].score : 0),
+      maxTileAchieved: sessionMetadata?.maxTileAchieved || Math.max(...moves.map(m => m.maxTile), 0)
+    },
+    moves: moves.map(move => ({
+      moveNumber: move.moveNumber,
+      direction: move.direction,
+      score: move.score,
+      maxTile: move.maxTile,
+      explanation: move.explanation,
+      boardStateBefore: move.boardStateBefore,
+      boardStateAfter: move.boardState,
+      mergeEvents: move.mergeEvents,
+      performance: {
+        emptyTiles: move.boardAnalysis?.emptyTiles,
+        possibleMerges: move.boardAnalysis?.possibleMerges,
+        cornerPosition: move.boardAnalysis?.cornerPosition
+      },
+      lookAhead: move.lookAhead,
+      alternatives: move.alternatives ? {
+        validMoves: move.alternatives.validMoves,
+        analysis: Object.fromEntries(
+          Object.entries(move.alternatives.analysis).map(([direction, analysis]) => [
+            direction,
+            {
+              merges: analysis.merges,
+              emptyAfter: analysis.emptyAfter,
+              maxTilePosition: analysis.maxTilePosition,
+              reasoning: analysis.reasoning,
+              score: (analysis as any).score || 0
+            }
+          ])
+        )
+      } : null
+    }))
+  };
+  
+  return JSON.stringify(exportData, null, 2);
+}
+
+function formatDataForCSV(moves: MoveAnalysis[], sessionMetadata?: SessionMetadata): string {
+  const headers = [
+    'Move Number',
+    'Direction', 
+    'Score',
+    'Max Tile',
+    'Empty Tiles',
+    'Possible Merges',
+    'Corner Position',
+    'Board Before',
+    'Board After',
+    'Explanation',
+    'Valid Alternatives',
+    'Chosen Move Score',
+    'Alt Up Score',
+    'Alt Down Score', 
+    'Alt Left Score',
+    'Alt Right Score',
+    'Alt Up Merges',
+    'Alt Down Merges',
+    'Alt Left Merges', 
+    'Alt Right Merges',
+    'Merge Events'
+  ];
+
+  const sessionInfo = [
+    `# Session Metadata`,
+    `# Strategy: ${sessionMetadata?.strategy || 'unknown'}`,
+    `# Speed: ${sessionMetadata?.speed || 1} moves/second`,
+    `# Total Moves: ${sessionMetadata?.totalMoves || moves.length}`,
+    `# Final Score: ${sessionMetadata?.finalScore || (moves.length > 0 ? moves[moves.length - 1].score : 0)}`,
+    `# Max Tile Achieved: ${sessionMetadata?.maxTileAchieved || Math.max(...moves.map(m => m.maxTile), 0)}`,
+    `# Exported: ${new Date().toISOString()}`,
+    `#`,
+    ''
+  ];
+
+  const rows = moves.map(move => {
+    const alternatives = move.alternatives?.analysis || {};
+    const chosenAnalysis = alternatives[move.direction];
+    
+    return [
+      move.moveNumber,
+      move.direction,
+      move.score,
+      move.maxTile,
+      move.boardAnalysis?.emptyTiles || '',
+      move.boardAnalysis?.possibleMerges || '',
+      move.boardAnalysis?.cornerPosition ? 'Yes' : 'No',
+      move.boardStateBefore ? formatBoardAsString(move.boardStateBefore) : '',
+      move.boardState ? formatBoardAsString(move.boardState) : '',
+      `"${(move.explanation || '').replace(/"/g, '""')}"`,
+      move.alternatives?.validMoves.join(';') || '',
+      (chosenAnalysis as any)?.score || '',
+      (alternatives.up as any)?.score || '',
+      (alternatives.down as any)?.score || '', 
+      (alternatives.left as any)?.score || '',
+      (alternatives.right as any)?.score || '',
+      alternatives.up?.merges || '',
+      alternatives.down?.merges || '',
+      alternatives.left?.merges || '',
+      alternatives.right?.merges || '',
+      move.mergeEvents?.map(e => `${e.position.row},${e.position.col}:${e.values.value1}+${e.values.value2}=${e.values.result}`).join(';') || ''
+    ].map(value => String(value));
+  });
+
+  return [
+    ...sessionInfo,
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n');
+}
+
+export function MoveAnalysisTable({ moves, isPlaying, onClear, sessionMetadata }: MoveAnalysisTableProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Export handlers
+  const handleExportJSON = () => {
+    if (moves.length === 0) return;
+    
+    const jsonData = formatDataForJSON(moves, sessionMetadata);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `2048-move-analysis-${timestamp}.json`;
+    
+    downloadFile(jsonData, filename, 'application/json');
+  };
+  
+  const handleExportCSV = () => {
+    if (moves.length === 0) return;
+    
+    const csvData = formatDataForCSV(moves, sessionMetadata);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `2048-move-analysis-${timestamp}.csv`;
+    
+    downloadFile(csvData, filename, 'text/csv');
+  };
 
   // Auto-scroll to bottom when new moves are added, unless user is actively scrolling
   useEffect(() => {
@@ -209,7 +430,7 @@ export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTab
   };
   return (
     <div className="bg-white rounded-lg shadow-lg h-full flex flex-col" style={{ backgroundColor: theme.ui.card.background }}>
-      <div className="p-4 border-b" style={{ borderColor: theme.ui.card.border }}>
+      <div className="p-4 border-b" style={{ borderColor: theme.ui.input.border }}>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold" style={{ color: theme.ui.text.primary }}>
@@ -218,22 +439,58 @@ export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTab
             <p className="text-xs mt-1" style={{ color: theme.ui.text.secondary }}>
               {isPlaying ? 'Recording moves...' : moves.length > 0 ? `${moves.length} moves recorded` : 'Start agent to see analysis'}
             </p>
+            {moves.length > 5 && (
+              <div className="text-xs mt-2 space-y-1" style={{ color: theme.ui.text.tertiary }}>
+                <div>💡 <strong>Performance:</strong> {calculatePerformanceMetrics(moves)}</div>
+                <div>🎯 <strong>Efficiency:</strong> {calculateMissedOpportunities(moves)}</div>
+              </div>
+            )}
           </div>
-          {onClear && moves.length > 0 && (
-            <button
-              onClick={onClear}
-              className="px-3 py-1 rounded text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: theme.ui.button.secondary.background,
-                color: theme.ui.button.secondary.text,
-                border: `1px solid ${theme.ui.card.border}`
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.ui.button.secondary.hover}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.ui.button.secondary.background}
-            >
-              Clear
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {moves.length > 0 && (
+              <>
+                <button
+                  onClick={handleExportJSON}
+                  className="px-3 py-1 rounded text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: theme.ui.accent,
+                    color: theme.ui.text.button,
+                    border: 'none'
+                  }}
+                  title="Export as JSON for detailed analysis"
+                >
+                  JSON
+                </button>
+                <button
+                  onClick={handleExportCSV}
+                  className="px-3 py-1 rounded text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: theme.ui.accent,
+                    color: theme.ui.text.button,
+                    border: 'none'
+                  }}
+                  title="Export as CSV for spreadsheet analysis"
+                >
+                  CSV
+                </button>
+              </>
+            )}
+            {onClear && moves.length > 0 && (
+              <button
+                onClick={onClear}
+                className="px-3 py-1 rounded text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: theme.ui.button.secondary.background,
+                  color: theme.ui.button.secondary.text,
+                  border: `1px solid ${theme.ui.input.border}`
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.ui.button.secondary.hover}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.ui.button.secondary.background}
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
       </div>
       
@@ -288,7 +545,7 @@ export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTab
                       {move.alternatives && move.alternatives.analysis['up'] && (
                         <MoveOption 
                           direction="up"
-                          analysis={move.alternatives.analysis['up']}
+                          analysis={{...move.alternatives.analysis['up'], score: (move.alternatives.analysis['up'] as any).score || 0}}
                           isChosen={move.direction === 'up'}
                         />
                       )}
@@ -300,7 +557,7 @@ export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTab
                       {move.alternatives && move.alternatives.analysis['left'] && (
                         <MoveOption 
                           direction="left"
-                          analysis={move.alternatives.analysis['left']}
+                          analysis={{...move.alternatives.analysis['left'], score: (move.alternatives.analysis['left'] as any).score || 0}}
                           isChosen={move.direction === 'left'}
                         />
                       )}
@@ -319,7 +576,7 @@ export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTab
                       {move.alternatives && move.alternatives.analysis['right'] && (
                         <MoveOption 
                           direction="right"
-                          analysis={move.alternatives.analysis['right']}
+                          analysis={{...move.alternatives.analysis['right'], score: (move.alternatives.analysis['right'] as any).score || 0}}
                           isChosen={move.direction === 'right'}
                         />
                       )}
@@ -331,7 +588,7 @@ export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTab
                       {move.alternatives && move.alternatives.analysis['down'] && (
                         <MoveOption 
                           direction="down"
-                          analysis={move.alternatives.analysis['down']}
+                          analysis={{...move.alternatives.analysis['down'], score: (move.alternatives.analysis['down'] as any).score || 0}}
                           isChosen={move.direction === 'down'}
                         />
                       )}
@@ -344,7 +601,7 @@ export function MoveAnalysisTable({ moves, isPlaying, onClear }: MoveAnalysisTab
                 {move.explanation && (
                   <div className="mt-2 p-2 rounded text-xs" style={{ 
                     backgroundColor: theme.ui.card.background,
-                    border: `1px solid ${theme.ui.card.border}`,
+                    border: `1px solid ${theme.ui.input.border}`,
                     color: theme.ui.text.secondary 
                   }}>
                     <strong>Reasoning:</strong> {move.explanation}

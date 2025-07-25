@@ -1,64 +1,58 @@
-# Chiri 🌸
+# 2048ish Blog
 
-![screenshot-light](public/screenshots/screenshot-light.png)
-![screenshot-dark](public/screenshots/screenshot-dark.png)
+The official blog for the 2048ish project, documenting our journey building AI agents for the classic 2048 game.
 
-Chiri is a minimal blog theme built with [Astro](https://astro.build), offering customization options while preserving its clean aesthetic.
+## About
 
-Check the [demo](https://astro-chiri.netlify.app/) for more details.
+This blog chronicles the development of intelligent agents that can play 2048, from basic heuristics to sophisticated expectimax algorithms. Built with Astro for performance and clean design.
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Create a new post
+npm run new "Post Title"
+```
+
+## Project Structure
+
+```
+src/
+├── content/
+│   ├── about/          # About section content
+│   └── posts/          # Blog posts
+├── components/         # Astro components
+├── layouts/           # Page layouts
+├── styles/            # Global styles
+└── config.ts          # Site configuration
+```
+
+## Posts
+
+- **Building Classic 2048** - Overview of the game implementation
+- **Introducing AI Agents** - Journey from classic to intelligent gameplay
+- **Research-Backed Agentic Strategies** - Deep dive into AI strategies
 
 ## Features
 
-- Built with Astro
-- Responsive
-- Light / Dark mode
-- MDX
-- KaTeX
-- Sitemap
-- OpenGraph
-- RSS
-- ...
+- 🎨 2048-inspired color palette with light/dark themes
+- 📱 Responsive design for all devices
+- ⚡ Fast static site generation with Astro
+- 🔍 Table of contents for long posts
+- 📋 Code syntax highlighting with copy buttons
+- ⏱️ Reading time estimates
 
-## Getting Started
+## Contributing
 
-1. [Fork](https://github.com/the3ash/astro-chiri/fork) this repository, or use this template to [create a new repository](https://github.com/new?template_name=astro-chiri&template_owner=the3ash).
-
-2. Run the following commands:
-
-   ```bash
-   git clone <your-repo-url>
-
-   cd <your-repo-name>
-
-   pnpm install
-
-   pnpm dev
-   ```
-
-3. Edit `src/config.ts` and `src/content/about/about.md` to your liking.
-
-4. Use `pnpm new <title>` to create new posts, or add your posts to `src/content/posts`.
-
-5. You need to set adapter as follows before deploying to Netlify, Vercel, or other platforms, but you can set `linkCard` to `false` in `src/config.ts` to skip this step:
-   - **Netlify**: `pnpm add @astrojs/netlify` and add `adapter: netlify()` in `astro.config.ts`.
-   - **Vercel**: `pnpm add @astrojs/vercel` and add `adapter: vercel()` in `astro.config.ts`.
-   - **Cloudflare Pages**: `pnpm add @astrojs/cloudflare` and add `adapter: cloudflare()` in `astro.config.ts`.
-   - **Static (e.g. GitHub Pages)**: `pnpm add @astrojs/static` and add `adapter: static()` in `astro.config.ts`.
-   - Refer to [Astro Deployment Guides](https://docs.astro.build/en/guides/deploy/) for more details.
-
-&emsp;[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start) [![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new) [![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://pages.cloudflare.com/start)
-
-## Commands
-
-- `pnpm new <title>` - Create a new post (use `_title` for drafts)
-- `pnpm update-theme` - Update the theme to the latest version
-
-## References
-
-- https://paco.me/
-- https://benji.org/
-- https://shud.in/
-- https://retypeset.radishzz.cc/
+This blog is part of the larger [2048ish project](https://github.com/arach/2048ish). See the main repository for contribution guidelines.
 
 ## License
 
