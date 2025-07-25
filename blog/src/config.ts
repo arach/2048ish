@@ -3,7 +3,7 @@ import type { ThemeConfig } from './types'
 export const themeConfig: ThemeConfig = {
   // SITE INFO ///////////////////////////////////////////////////////////////////////////////////////////
   site: {
-    website: 'https://2048ish.dev/blog', // Site domain
+    website: 'https://arach.github.io/2048ish/blog', // Site domain
     title: '2048ish blog', // Site title
     author: 'arach', // Author name
     description: 'building AI agents for 2048, learning stuff, sharing the journey', // Site description

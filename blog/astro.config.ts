@@ -17,8 +17,8 @@ import path from 'path'
 import netlify from '@astrojs/netlify'
 
 export default defineConfig({
-  site: 'https://2048ish.dev',
-  base: '/blog',
+  site: 'https://arach.github.io',
+  base: '/2048ish/blog',
   outDir: '../out/blog',
   image: {
     service: {
