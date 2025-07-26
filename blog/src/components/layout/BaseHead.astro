@@ -7,33 +7,47 @@ import 'katex/dist/katex.min.css'
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site)
 const baseUrl = import.meta.env.BASE_URL || '/'
+// Ensure baseUrl has trailing slash
+const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
 
 const { title, description, ogImage } = Astro.props as BaseHeadProps
-const imageUrl = ogImage ? new URL(ogImage, Astro.url) : new URL('/og/2048ish-og.png', Astro.url)
+const imageUrl = ogImage ? new URL(ogImage, Astro.url) : `${normalizedBaseUrl}og/2048ish-og.png`
 ---
 
 <!-- Global Metadata -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<link rel="icon" type="image/svg+xml" href={`${baseUrl}favicon.svg`} />
-<link rel="apple-touch-icon" href={`${baseUrl}apple-touch-icon.png`} />
-<link rel="preload" href={`${baseUrl}fonts/Inter.woff2`} as="font" type="font/woff2" crossorigin="anonymous" />
-<link
-  rel="preload"
-  href={`${baseUrl}fonts/Besley-Italic.woff2`}
-  as="font"
-  type="font/woff2"
-  crossorigin="anonymous"
-/>
+<link rel="icon" type="image/svg+xml" href={`${normalizedBaseUrl}favicon.svg`} />
+<link rel="apple-touch-icon" href={`${normalizedBaseUrl}apple-touch-icon.png`} />
+<!-- Font preloads removed - fonts are dynamically loaded by @font-face rules below -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
-<link rel="sitemap" href="/sitemap-index.xml" />
+<style define:vars={{ interFontUrl: `${normalizedBaseUrl}fonts/Inter.woff2`, besleyFontUrl: `${normalizedBaseUrl}fonts/Besley-Italic.woff2` }}>
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(var(--interFontUrl)) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Besley';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(var(--besleyFontUrl)) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<link rel="sitemap" href={`${normalizedBaseUrl}sitemap-index.xml`} />
 <link
   rel="alternate"
   type="application/rss+xml"
   title={themeConfig.site.title}
-  href={new URL('rss.xml', Astro.site)}
+  href={`${normalizedBaseUrl}rss.xml`}
 />
 <meta name="generator" content={Astro.generator} />
 

@@ -34,18 +34,18 @@
   --code-bg: #EDE0C8;
   --mark: #EDCC61;
 
-  /* Syntax Theme  */
-  --astro-code-foreground: rgba(0, 0, 0, 0.85);
-  --astro-code-background: rgba(0, 0, 0, 0.03);
-  --astro-code-token-constant: rgba(0, 0, 0, 0.85);
-  --astro-code-token-string: rgba(0, 0, 0, 0.85);
-  --astro-code-token-comment: rgba(0, 0, 0, 0.35);
-  --astro-code-token-keyword: rgba(0, 0, 0, 0.55);
-  --astro-code-token-parameter: rgba(0, 0, 0, 0.85);
-  --astro-code-token-function: rgba(0, 0, 0, 0.85);
-  --astro-code-token-string-expression: rgba(0, 0, 0, 0.55);
-  --astro-code-token-punctuation: rgba(0, 0, 0, 0.55);
-  --astro-code-token-link: rgba(0, 0, 0, 0.55);
+  /* Syntax Theme - 2048 inspired light mode */
+  --astro-code-foreground: #776E65;
+  --astro-code-background: rgba(237, 224, 200, 0.3);
+  --astro-code-token-constant: #F59563;
+  --astro-code-token-string: #8F7A66;
+  --astro-code-token-comment: #BBADA0;
+  --astro-code-token-keyword: #F59563;
+  --astro-code-token-parameter: #776E65;
+  --astro-code-token-function: #8B7A68;
+  --astro-code-token-string-expression: #8F7A66;
+  --astro-code-token-punctuation: #BBADA0;
+  --astro-code-token-link: #F59563;
 }
 
 /* Light Mode (Explicit) */
@@ -59,18 +59,18 @@ html.light {
   --code-bg: #EDE0C8;
   --mark: #EDCC61;
 
-  /* Syntax Theme  */
-  --astro-code-foreground: rgba(0, 0, 0, 0.85);
-  --astro-code-background: rgba(0, 0, 0, 0.03);
-  --astro-code-token-constant: rgba(0, 0, 0, 0.85);
-  --astro-code-token-string: rgba(0, 0, 0, 0.85);
-  --astro-code-token-comment: rgba(0, 0, 0, 0.35);
-  --astro-code-token-keyword: rgba(0, 0, 0, 0.5);
-  --astro-code-token-parameter: rgba(0, 0, 0, 0.85);
-  --astro-code-token-function: rgba(0, 0, 0, 0.85);
-  --astro-code-token-string-expression: rgba(0, 0, 0, 0.55);
-  --astro-code-token-punctuation: rgba(0, 0, 0, 0.55);
-  --astro-code-token-link: rgba(0, 0, 0, 0.55);
+  /* Syntax Theme - 2048 inspired light mode */
+  --astro-code-foreground: #776E65;
+  --astro-code-background: rgba(237, 224, 200, 0.3);
+  --astro-code-token-constant: #F59563;
+  --astro-code-token-string: #8F7A66;
+  --astro-code-token-comment: #BBADA0;
+  --astro-code-token-keyword: #F59563;
+  --astro-code-token-parameter: #776E65;
+  --astro-code-token-function: #8B7A68;
+  --astro-code-token-string-expression: #8F7A66;
+  --astro-code-token-punctuation: #BBADA0;
+  --astro-code-token-link: #F59563;
 }
 
 /* Dark Mode (2048 inspired) */
@@ -84,18 +84,18 @@ html.dark {
   --code-bg: #4A412D;
   --mark: #EDCC61;
 
-  /* Syntax Theme  */
-  --astro-code-foreground: rgba(255, 255, 255, 0.9);
-  --astro-code-background: rgba(255, 255, 255, 0.03);
-  --astro-code-token-constant: rgba(255, 255, 255, 0.9);
-  --astro-code-token-string: rgba(255, 255, 255, 0.9);
-  --astro-code-token-comment: rgba(255, 255, 255, 0.35);
-  --astro-code-token-keyword: rgba(255, 255, 255, 0.55);
-  --astro-code-token-parameter: rgba(255, 255, 255, 0.9);
-  --astro-code-token-function: rgba(255, 255, 255, 0.9);
-  --astro-code-token-string-expression: rgba(255, 255, 255, 0.55);
-  --astro-code-token-punctuation: rgba(255, 255, 255, 0.55);
-  --astro-code-token-link: rgba(255, 255, 255, 0.55);
+  /* Syntax Theme - 2048 inspired dark mode */
+  --astro-code-foreground: #F5F0E8;
+  --astro-code-background: rgba(74, 65, 45, 0.4);
+  --astro-code-token-constant: #F67C5F;
+  --astro-code-token-string: #EDCC61;
+  --astro-code-token-comment: #8F7A66;
+  --astro-code-token-keyword: #F67C5F;
+  --astro-code-token-parameter: #F5F0E8;
+  --astro-code-token-function: #BBADA0;
+  --astro-code-token-string-expression: #EDCC61;
+  --astro-code-token-punctuation: #8F7A66;
+  --astro-code-token-link: #F67C5F;
 }
 
 html {
@@ -205,7 +205,7 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.2;
   letter-spacing: 0.05em;
   color: var(--text-primary);
-  margin-top: 1em;
+  margin-top: 0.75em;
   margin-bottom: 0;
 }
 
@@ -217,36 +217,36 @@ h1 {
 }
 
 h2 {
-  font-size: 1.8rem;
-  color: #F59563; /* 2048 orange accent */
+  font-size: 1rem;
+  color: var(--text-primary);
   margin-bottom: 0;
 }
 
 h3 {
-  font-size: 1.4rem;
+  font-size: 0.9rem;
 }
 
 h4 {
-  font-size: 1.2rem;
+  font-size: 0.8rem;
 }
 
 h5 {
-  font-size: 1rem;
+  font-size: 0.7rem;
 }
 
 h6 {
-  font-size: 0.9rem;
+  font-size: 0.7rem;
 }
 
 /* Tighter paragraph spacing */
 p {
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
 }
 
 /* First paragraph after headers should have minimal top margin */
 h1 + p, h2 + p, h3 + p, h4 + p, h5 + p, h6 + p {
-  margin-top: 0.25em;
+  margin-top: 0.125em;
 }
 
 @media (max-width: 640px) {

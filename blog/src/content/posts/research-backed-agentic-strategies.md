@@ -5,8 +5,6 @@ description: 'We dug into the academic papers and built AI coaches that actually
 image: './_assets/strategy-overview.png'
 ---
 
-# Research-Backed Agentic Strategies
-
 Building AI agents for 2048 isn't just about implementing random heuristics and hoping for the best. We dove deep into the academic literature to understand what actually works.
 
 ## The Problem with Traditional Approaches
