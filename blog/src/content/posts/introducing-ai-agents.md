@@ -4,8 +4,6 @@ pubDate: 2025-07-22
 description: 'From classic gameplay to intelligent automation - implementing AI agents that can actually play 2048 with different strategies and approaches.'
 ---
 
-# Introducing AI Agents
-
 After building our solid 2048 foundation, it was time for the real challenge: creating AI agents that could actually play the game intelligently.
 
 Turns out, teaching a computer to play 2048 well is much more complex than you might expect.
@@ -47,14 +45,14 @@ class AgentManager {
 
 ## The Agents We Built
 
-### Greedy Agent
+### 1. Greedy Agent
 Our simplest approach - always takes the move that immediately maximizes the score.
 
 **Strategy**: Look at each possible move, calculate the resulting score, pick the highest.
 
-**Performance**: Gets stuck around 1,000-4,000 points. Great for testing but not competitive.
+**Performance**: Gets stuck around 800-2,000 points. Great for testing but not competitive.
 
-### Corner Strategy Agent  
+### 2. Corner Strategy Agent  
 Based on the popular human strategy of keeping your highest tile in a corner.
 
 **Strategy**: 
@@ -62,9 +60,9 @@ Based on the popular human strategy of keeping your highest tile in a corner.
 - Build monotonic sequences away from that corner
 - Avoid moves that would disturb the corner tile
 
-**Performance**: Much more consistent, regularly reaching 8,000-15,000 points.
+**Performance**: Much more consistent, regularly reaching 4,000-8,000 points.
 
-### Expectimax Agent
+### 3. Expectimax Agent
 Our most sophisticated approach using game tree search with probabilistic reasoning.
 
 **Strategy**:
@@ -72,7 +70,7 @@ Our most sophisticated approach using game tree search with probabilistic reason
 - Account for random tile placement using expected values
 - Evaluate positions using multiple heuristics (smoothness, monotonicity, empty cells)
 
-**Performance**: Our strongest agent, consistently reaching 20,000+ points and occasionally hitting the 2048 tile.
+**Performance**: Our strongest agent, consistently reaching 8,000-12,000 points and occasionally hitting higher tiles.
 
 ```typescript
 class ExpectimaxAgent implements Agent {

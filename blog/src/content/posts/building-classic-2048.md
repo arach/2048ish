@@ -4,8 +4,6 @@ pubDate: 2025-07-15
 description: 'Welcome to 2048ish! Starting with a solid foundation - implementing the classic 2048 game with TypeScript and React.'
 ---
 
-# Building Classic 2048
-
 Welcome to the 2048ish blog! This is where we'll document our journey building AI agents for the classic sliding puzzle game.
 
 But first, you need a solid foundation. Before we could teach machines to play 2048, we had to build a proper implementation of the game itself.

@@ -1,4 +1,9 @@
-<script is:inline>
+---
+const baseUrl = import.meta.env.BASE_URL || '/'
+const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+---
+
+<script is:inline define:vars={{ faviconUrl: `${normalizedBaseUrl}favicon.svg` }}>
   // Favicon theme switcher for system theme-based favicon updates, using external SVG file
   class FaviconThemeSwitcher {
     constructor() {
@@ -13,7 +18,7 @@
       }
 
       this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      this.svgUrl = '/favicon.svg'
+      this.svgUrl = faviconUrl
       this.currentColor = null
       this.svgContent = null
 

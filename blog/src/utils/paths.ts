@@ -20,8 +20,13 @@ export function getBasePath(): string {
  * Get the main app URL for the current environment
  */
 export function getMainAppUrl(): string {
-  const basePath = getBasePath();
-  return basePath || '/';
+  // In development, assume main app is running on different port
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3000';
+  }
+  
+  // In production, use the GitHub Pages URL
+  return 'https://arach.github.io/2048ish';
 }
 
 /**

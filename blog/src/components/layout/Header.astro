@@ -4,12 +4,13 @@ import ThemeToggle from '@/components/ui/ThemeToggle.astro'
 import { getMainAppUrl } from '@/utils/paths'
 
 const mainAppUrl = getMainAppUrl()
+const blogBaseUrl = import.meta.env.BASE_URL || '/'
 ---
 
 <header>
   <nav>
     <div class="brand">
-      <a href="/" class="brand-link">
+      <a href={blogBaseUrl} class="brand-link">
         <span class="brand-number">2048</span>
         <span class="brand-suffix">ish</span>
         <span class="brand-blog">blog</span>
