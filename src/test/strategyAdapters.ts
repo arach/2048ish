@@ -13,6 +13,12 @@ import { ExpectimaxStrategy } from '../agents/strategies/expectimaxStrategy';
 import { SnakeStrategy } from '../agents/strategies/snakeStrategy';
 import { SmoothnessStrategy } from '../agents/strategies/smoothnessStrategy';
 
+// Import win-focused strategies
+import { MCTSStrategy } from '../agents/strategies/mctsStrategy';
+import { EndgameStrategy } from '../agents/strategies/endgameStrategy';
+import { RiskTakingStrategy } from '../agents/strategies/riskTakingStrategy';
+import { WinProbabilityStrategy } from '../agents/strategies/winProbabilityStrategy';
+
 // Convert HeadlessGame state to agent GameState format
 function convertGameState(game: HeadlessGame): GameState {
   const state = game.getState();
@@ -203,19 +209,70 @@ export const smoothnessStrategy: BenchmarkStrategy = {
   }
 };
 
-// Export all strategies (real ones from UI)
+// Win-Focused Strategy Adapters
+export const mctsStrategy: BenchmarkStrategy = {
+  name: "MCTS Win Hunter",
+  description: "Monte Carlo Tree Search focused on finding actual win paths to 2048",
+  strategy: (game: HeadlessGame): Direction | null => {
+    const mcts = new MCTSStrategy();
+    const gameState = convertGameState(game);
+    return mcts.getNextMove(gameState);
+  },
+  getExplanation: (move: Direction, game: HeadlessGame): string => {
+    const mcts = new MCTSStrategy();
+    const gameState = convertGameState(game);
+    return mcts.explainMove(move, gameState);
+  }
+};
+
+export const endgameStrategy: BenchmarkStrategy = {
+  name: "Endgame Specialist",
+  description: "Specialized for 1024→2048 transitions and winning positions",
+  strategy: (game: HeadlessGame): Direction | null => {
+    const endgame = new EndgameStrategy();
+    const gameState = convertGameState(game);
+    return endgame.getNextMove(gameState);
+  }
+};
+
+export const riskTakingStrategy: BenchmarkStrategy = {
+  name: "Risk Taker",
+  description: "Willing to sacrifice average score for win probability - goes for broke!",
+  strategy: (game: HeadlessGame): Direction | null => {
+    const riskTaker = new RiskTakingStrategy();
+    const gameState = convertGameState(game);
+    return riskTaker.getNextMove(gameState);
+  }
+};
+
+export const winProbabilityStrategy: BenchmarkStrategy = {
+  name: "Win Probability",
+  description: "Evaluates each move purely on probability of eventually reaching 2048",
+  strategy: (game: HeadlessGame): Direction | null => {
+    const winProb = new WinProbabilityStrategy();
+    const gameState = convertGameState(game);
+    return winProb.getNextMove(gameState);
+  }
+};
+
+// Export all strategies (real ones from UI + win-focused)
 export const allStrategies: BenchmarkStrategy[] = [
   randomStrategy,
   greedyStrategy,
   cornerStrategy,
   expectimaxStrategy,
   snakeStrategy,
-  smoothnessStrategy
+  smoothnessStrategy,
+  mctsStrategy,
+  endgameStrategy,
+  riskTakingStrategy,
+  winProbabilityStrategy
 ];
 
 // Export strategies grouped by type
 export const basicStrategies = [randomStrategy, greedyStrategy, cornerStrategy];
 export const advancedStrategies = [expectimaxStrategy, snakeStrategy, smoothnessStrategy];
+export const winFocusedStrategies = [mctsStrategy, endgameStrategy, riskTakingStrategy, winProbabilityStrategy];
 
 // Keep old manual strategies for comparison
 export const manualStrategies = [monotonicityStrategy, emptyCellsStrategy, highScoreStrategy];

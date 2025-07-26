@@ -2,13 +2,15 @@
  * Agent benchmarking framework for statistical performance analysis
  */
 
-import { HeadlessGame, runSimulation, SimulationResult, HeadlessGameConfig } from '../game/headlessGame';
+import { HeadlessGame, runSimulation, SimulationResult, HeadlessGameConfig, GameRecording } from '../game/headlessGame';
 import { Direction } from '../game/logic';
 
 export interface BenchmarkStrategy {
   name: string;
   description: string;
   strategy: (game: HeadlessGame) => Direction | null;
+  getExplanation?: (move: Direction, game: HeadlessGame) => string;
+  getEvaluation?: (game: HeadlessGame) => any;
 }
 
 export interface BenchmarkConfig {
@@ -17,6 +19,8 @@ export interface BenchmarkConfig {
   useRandomSeeds?: boolean;
   gameConfig?: HeadlessGameConfig;
   maxMoves?: number;
+  recordGames?: boolean;
+  recordTopGames?: number; // Record top N games by score
   progressCallback?: (completed: number, total: number, strategy: string) => void;
 }
 
@@ -55,6 +59,10 @@ export interface StrategyStats {
   
   // Raw results for further analysis
   results: SimulationResult[];
+  
+  // Game recordings for replay analysis
+  topGameRecordings: GameRecording[];
+  worstGameRecordings: GameRecording[];
 }
 
 export interface BenchmarkComparison {

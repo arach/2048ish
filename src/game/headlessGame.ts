@@ -11,6 +11,27 @@ export interface HeadlessGameConfig {
   winTile?: number;
 }
 
+export interface GameMove {
+  moveNumber: number;
+  direction: Direction;
+  gridBefore: Grid;
+  gridAfter: Grid;
+  scoreIncrease: number;
+  totalScore: number;
+  reasoning?: string;
+  evaluation?: any;
+}
+
+export interface GameRecording {
+  startTime: number;
+  endTime?: number;
+  seed?: number;
+  moves: GameMove[];
+  finalState: GameState;
+  strategy: string;
+  result: SimulationResult;
+}
+
 export interface SimulationResult {
   score: number;
   moves: number;
@@ -20,6 +41,7 @@ export interface SimulationResult {
   finalGrid: Grid;
   seed?: number;
   duration: number; // milliseconds
+  recording?: GameRecording;
 }
 
 export class HeadlessGame {
@@ -28,6 +50,8 @@ export class HeadlessGame {
   private moveCount: number = 0;
   private winTile: number;
   private seed?: number;
+  private recording?: GameRecording;
+  private isRecording: boolean = false;
 
   constructor(config: HeadlessGameConfig = {}) {
     this.winTile = config.winTile || 2048;
@@ -53,10 +77,13 @@ export class HeadlessGame {
     };
   }
 
-  public makeMove(direction: Direction): boolean {
+  public makeMove(direction: Direction, reasoning?: string, evaluation?: any): boolean {
     if (this.state.isGameOver) {
       return false;
     }
+
+    const gridBefore = this.state.grid.map(row => [...row]);
+    const scoreBefore = this.state.score;
 
     const moveResult = this.simulateMove(this.state.grid, direction);
     
@@ -73,6 +100,20 @@ export class HeadlessGame {
     const tileResult = addRandomTile(this.state.grid, this.random);
     this.state.grid = tileResult.grid;
 
+    // Record move if recording
+    if (this.isRecording && this.recording) {
+      this.recording.moves.push({
+        moveNumber: this.moveCount,
+        direction,
+        gridBefore,
+        gridAfter: this.state.grid.map(row => [...row]),
+        scoreIncrease: moveResult.scoreIncrease,
+        totalScore: this.state.score,
+        reasoning,
+        evaluation
+      });
+    }
+
     // Check win condition
     if (!this.state.hasWon && this.hasWinTile()) {
       this.state.hasWon = true;
@@ -82,6 +123,46 @@ export class HeadlessGame {
     this.state.isGameOver = this.isGameOver();
 
     return true;
+  }
+
+  public startRecording(strategyName: string): void {
+    this.isRecording = true;
+    this.recording = {
+      startTime: Date.now(),
+      seed: this.seed,
+      moves: [],
+      finalState: this.state,
+      strategy: strategyName,
+      result: {
+        score: 0,
+        moves: 0,
+        maxTile: 0,
+        isWin: false,
+        isGameOver: false,
+        finalGrid: [],
+        duration: 0
+      }
+    };
+  }
+
+  public stopRecording(): GameRecording | undefined {
+    if (!this.recording) return undefined;
+    
+    this.recording.endTime = Date.now();
+    this.recording.finalState = { ...this.state };
+    this.recording.result = {
+      score: this.state.score,
+      moves: this.moveCount,
+      maxTile: this.getMaxTile(),
+      isWin: this.state.hasWon,
+      isGameOver: this.state.isGameOver,
+      finalGrid: this.state.grid.map(row => [...row]),
+      duration: this.recording.endTime - this.recording.startTime,
+      seed: this.seed
+    };
+    
+    this.isRecording = false;
+    return this.recording;
   }
 
   private simulateMove(grid: Grid, direction: Direction): {

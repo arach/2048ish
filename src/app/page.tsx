@@ -91,6 +91,26 @@ export default function Home() {
               </p>
             </div>
           </Link>
+          
+          {/* Replays Mode */}
+          <Link href="/replays" className="block">
+            <div 
+              className="p-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+              style={{ 
+                backgroundColor: theme.ui.card.background,
+                border: `2px solid transparent`
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = theme.ui.accent}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
+            >
+              <h2 className="text-2xl font-bold mb-2" style={{ color: theme.ui.text.primary }}>
+                📺 Game Replays
+              </h2>
+              <p style={{ color: theme.ui.text.secondary }}>
+                Analyze recorded games! Step through moves and understand strategy decisions.
+              </p>
+            </div>
+          </Link>
         </div>
         
         {/* Footer */}

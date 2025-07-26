@@ -10,12 +10,14 @@
  */
 
 import { AgentBenchmark, quickBenchmark } from './agentBenchmark';
-import { allStrategies, basicStrategies } from './strategyAdapters';
+import { allStrategies, basicStrategies, winFocusedStrategies } from './strategyAdapters';
 
 async function runQuickBenchmark() {
   console.log('🚀 Running Quick Benchmark (25 games per strategy)...\n');
   
-  const results = await quickBenchmark(basicStrategies, 25);
+  // Include win-focused strategies in quick benchmark
+  const testStrategies = [...basicStrategies, ...winFocusedStrategies];
+  const results = await quickBenchmark(testStrategies, 25);
   console.log(results);
 }
 
