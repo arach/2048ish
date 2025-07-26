@@ -4,13 +4,14 @@ import type { PostListProps } from '@/types'
 import { themeConfig } from '@/config'
 
 const { posts } = Astro.props as PostListProps
+const baseUrl = import.meta.env.BASE_URL || '/'
 ---
 
 <ul>
   {
     posts.map((post) => (
       <li>
-        <a href={`/${post.id}/`}>
+        <a href={`${baseUrl}${post.id}/`}>
           <div class={`post-item ${!themeConfig.date.dateOnRight ? 'date-left' : ''}`}>
             {!themeConfig.date.dateOnRight && (
               <p class="date font-features">
