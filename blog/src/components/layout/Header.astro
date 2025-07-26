@@ -44,7 +44,7 @@ const blogBaseUrl = import.meta.env.BASE_URL || '/'
   .brand-link {
     text-decoration: none;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.25rem;
     transition: all 0.2s ease;
   }
@@ -73,14 +73,14 @@ const blogBaseUrl = import.meta.env.BASE_URL || '/'
   
   .brand-blog {
     font-family: Inter, system-ui, sans-serif;
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-secondary);
     margin-left: 0.5rem;
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 1rem;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     transition: all 0.2s ease;
   }
   
@@ -126,8 +126,9 @@ const blogBaseUrl = import.meta.env.BASE_URL || '/'
     }
     
     .brand-blog {
-      font-size: 0.875rem;
+      font-size: 0.75rem;
       margin-left: 0.25rem;
+      padding: 0.375rem 0.75rem;
     }
     
     .nav-links {

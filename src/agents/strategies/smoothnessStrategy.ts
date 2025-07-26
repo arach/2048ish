@@ -217,12 +217,65 @@ export class SmoothnessStrategy implements PlayStrategy {
   }
 
   private simulateMove(grid: (number | null)[][], direction: Direction): (number | null)[][] {
-    // Create a copy of the grid
+    const size = grid.length;
     const newGrid = grid.map(row => [...row]);
-    
-    // Simple move simulation - you might want to use your existing logic here
-    // This is a placeholder that doesn't modify the grid
+
+    if (direction === 'left' || direction === 'right') {
+      for (let row = 0; row < size; row++) {
+        const result = this.processLine(newGrid[row], direction === 'right');
+        newGrid[row] = result.line;
+      }
+    } else {
+      for (let col = 0; col < size; col++) {
+        const column = newGrid.map(row => row[col]);
+        const result = this.processLine(column, direction === 'down');
+        for (let row = 0; row < size; row++) {
+          newGrid[row][col] = result.line[row];
+        }
+      }
+    }
+
     return newGrid;
+  }
+
+  private processLine(line: (number | null)[], reverse: boolean): {
+    line: (number | null)[];
+    hasChanged: boolean;
+    scoreIncrease: number;
+  } {
+    // Store original line for comparison
+    const originalLine = [...line];
+    
+    // Remove nulls and reverse if needed
+    let numbers = line.filter(cell => cell !== null) as number[];
+    if (reverse) numbers.reverse();
+
+    let scoreIncrease = 0;
+    let hasChanged = false;
+
+    // Merge adjacent identical numbers
+    for (let i = 0; i < numbers.length - 1; i++) {
+      if (numbers[i] === numbers[i + 1]) {
+        numbers[i] *= 2;
+        scoreIncrease += numbers[i];
+        numbers.splice(i + 1, 1);
+        hasChanged = true;
+      }
+    }
+
+    // Pad with nulls
+    while (numbers.length < line.length) {
+      numbers.push(null);
+    }
+
+    if (reverse) numbers.reverse();
+
+    // Check if the final line is different from the original
+    if (!hasChanged) {
+      hasChanged = originalLine.some((cell, idx) => cell !== numbers[idx]);
+    }
+
+    return { line: numbers, hasChanged, scoreIncrease };
   }
 
   private countPotentialMerges(gameState: GameState, move: Direction): number {

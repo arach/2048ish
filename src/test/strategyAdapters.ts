@@ -11,6 +11,7 @@ import { GreedyStrategy } from '../agents/strategies/greedyStrategy';
 import { CornerStrategy } from '../agents/strategies/cornerStrategy';
 import { ExpectimaxStrategy } from '../agents/strategies/expectimaxStrategy';
 import { SnakeStrategy } from '../agents/strategies/snakeStrategy';
+import { SmoothnessStrategy } from '../agents/strategies/smoothnessStrategy';
 
 // Convert HeadlessGame state to agent GameState format
 function convertGameState(game: HeadlessGame): GameState {
@@ -191,18 +192,30 @@ export const snakeStrategy: BenchmarkStrategy = {
   }
 };
 
+// Research-Based Smoothness Strategy Adapter
+export const smoothnessStrategy: BenchmarkStrategy = {
+  name: "Smoothness Master",
+  description: "Based on academic research - prioritizes smoothness, monotonicity, and empty tiles",
+  strategy: (game: HeadlessGame): Direction | null => {
+    const smoothness = new SmoothnessStrategy();
+    const gameState = convertGameState(game);
+    return smoothness.getNextMove(gameState);
+  }
+};
+
 // Export all strategies (real ones from UI)
 export const allStrategies: BenchmarkStrategy[] = [
   randomStrategy,
   greedyStrategy,
   cornerStrategy,
   expectimaxStrategy,
-  snakeStrategy
+  snakeStrategy,
+  smoothnessStrategy
 ];
 
 // Export strategies grouped by type
 export const basicStrategies = [randomStrategy, greedyStrategy, cornerStrategy];
-export const advancedStrategies = [expectimaxStrategy, snakeStrategy];
+export const advancedStrategies = [expectimaxStrategy, snakeStrategy, smoothnessStrategy];
 
 // Keep old manual strategies for comparison
 export const manualStrategies = [monotonicityStrategy, emptyCellsStrategy, highScoreStrategy];
