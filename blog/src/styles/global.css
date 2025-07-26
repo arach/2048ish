@@ -206,18 +206,20 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.05em;
   color: var(--text-primary);
   margin-top: 1.5em;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.25em;
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 3rem;
   color: #F59563; /* 2048 orange accent */
   text-shadow: 0 2px 4px rgba(245, 149, 99, 0.2);
+  margin-bottom: 0.5em;
 }
 
 h2 {
   font-size: 1.8rem;
   color: #F59563; /* 2048 orange accent */
+  margin-bottom: 0.25em;
 }
 
 h3 {
@@ -238,7 +240,7 @@ h6 {
 
 @media (max-width: 640px) {
   h1 {
-    font-size: 2rem;
+    font-size: 2.25rem;
   }
   
   h2 {
