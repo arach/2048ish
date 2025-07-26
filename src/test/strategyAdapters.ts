@@ -8,6 +8,9 @@ import { BenchmarkStrategy } from './agentBenchmark';
 
 // Import existing strategies
 import { GreedyStrategy } from '../agents/strategies/greedyStrategy';
+import { CornerStrategy } from '../agents/strategies/cornerStrategy';
+import { ExpectimaxStrategy } from '../agents/strategies/expectimaxStrategy';
+import { SnakeStrategy } from '../agents/strategies/snakeStrategy';
 
 // Convert HeadlessGame state to agent GameState format
 function convertGameState(game: HeadlessGame): GameState {
@@ -42,51 +45,14 @@ export const randomStrategy: BenchmarkStrategy = {
   }
 };
 
-// Corner Strategy (manually implemented for benchmark)
+// Real Corner Strategy Adapter
 export const cornerStrategy: BenchmarkStrategy = {
-  name: "Corner",
-  description: "Keeps highest tile in bottom-right corner and builds monotonically",
+  name: "Corner Master",
+  description: "Keep the biggest tile in a corner using the real UI strategy",
   strategy: (game: HeadlessGame): Direction | null => {
-    const state = game.getState();
-    const grid = state.grid;
-    
-    // Find the highest tile and its position
-    let maxTile = 0;
-    let maxPos: [number, number] = [0, 0];
-    
-    for (let row = 0; row < grid.length; row++) {
-      for (let col = 0; col < grid[row].length; col++) {
-        const value = grid[row][col];
-        if (value && value > maxTile) {
-          maxTile = value;
-          maxPos = [row, col];
-        }
-      }
-    }
-    
-    const validMoves = game.getValidMoves();
-    if (validMoves.length === 0) return null;
-    
-    // Prefer moves that keep the max tile in the bottom-right
-    const preferredOrder: Direction[] = ['right', 'down', 'left', 'up'];
-    
-    // If max tile is already in bottom-right corner, stick to the plan
-    if (maxPos[0] === grid.length - 1 && maxPos[1] === grid[0].length - 1) {
-      for (const move of preferredOrder) {
-        if (validMoves.includes(move)) {
-          return move;
-        }
-      }
-    }
-    
-    // Otherwise, try to get the max tile to the corner
-    for (const move of preferredOrder) {
-      if (validMoves.includes(move)) {
-        return move;
-      }
-    }
-    
-    return validMoves[0];
+    const corner = new CornerStrategy('bottom-right');
+    const gameState = convertGameState(game);
+    return corner.getNextMove(gameState);
   }
 };
 
@@ -203,16 +169,40 @@ export const highScoreStrategy: BenchmarkStrategy = {
   }
 };
 
-// Export all strategies
+// Real Expectimax Strategy Adapter
+export const expectimaxStrategy: BenchmarkStrategy = {
+  name: "Expectimax",
+  description: "Uses expectimax search with weighted heuristics from the real UI strategy",
+  strategy: (game: HeadlessGame): Direction | null => {
+    const expectimax = new ExpectimaxStrategy();
+    const gameState = convertGameState(game);
+    return expectimax.getNextMove(gameState);
+  }
+};
+
+// Real Snake Strategy Adapter
+export const snakeStrategy: BenchmarkStrategy = {
+  name: "Snake Builder",
+  description: "Build tiles in a snake/zigzag pattern using the real UI strategy",
+  strategy: (game: HeadlessGame): Direction | null => {
+    const snake = new SnakeStrategy();
+    const gameState = convertGameState(game);
+    return snake.getNextMove(gameState);
+  }
+};
+
+// Export all strategies (real ones from UI)
 export const allStrategies: BenchmarkStrategy[] = [
   randomStrategy,
   greedyStrategy,
   cornerStrategy,
-  monotonicityStrategy,
-  emptyCellsStrategy,
-  highScoreStrategy
+  expectimaxStrategy,
+  snakeStrategy
 ];
 
 // Export strategies grouped by type
 export const basicStrategies = [randomStrategy, greedyStrategy, cornerStrategy];
-export const advancedStrategies = [monotonicityStrategy, emptyCellsStrategy, highScoreStrategy];
+export const advancedStrategies = [expectimaxStrategy, snakeStrategy];
+
+// Keep old manual strategies for comparison
+export const manualStrategies = [monotonicityStrategy, emptyCellsStrategy, highScoreStrategy];
