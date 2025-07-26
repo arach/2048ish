@@ -50,6 +50,10 @@ const ogImage = `/open-graph/${postSlug}.png`
               themeConfig.post.readingTime && readingTime && (
                 <span class="reading-time">
                   <span class="separator">·</span>
+                  <svg class="clock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12,6 12,12 16,14"/>
+                  </svg>
                   {readingTime.text}
                 </span>
               )
@@ -80,5 +84,30 @@ const ogImage = `/open-graph/${postSlug}.png`
 
   .post-container main {
     flex: 1;
+  }
+
+  .date {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .reading-time {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .clock-icon {
+    width: 12px;
+    height: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .separator {
+    color: var(--text-tertiary);
   }
 </style>
