@@ -120,7 +120,11 @@ export class AgentBenchmark {
         seed
       };
 
-      const result = runSimulation(strategy.strategy, gameConfig);
+      const result = runSimulation(strategy.strategy, {
+        ...gameConfig,
+        recordGame: config.recordGames,
+        strategyName: strategy.name
+      });
       results.push(result);
 
       if (config.progressCallback) {
@@ -193,7 +197,9 @@ export class AgentBenchmark {
       avgDuration: Math.round(this.average(durations) * 100) / 100,
       totalDuration: Math.round(totalDuration),
       
-      results
+      results,
+      topGameRecordings: [],
+      worstGameRecordings: []
     };
   }
 

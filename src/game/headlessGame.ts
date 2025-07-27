@@ -336,11 +336,16 @@ export class HeadlessGame {
 
 export function runSimulation(
   strategy: (game: HeadlessGame) => Direction | null,
-  config: HeadlessGameConfig = {}
+  config: HeadlessGameConfig & { recordGame?: boolean; strategyName?: string } = {}
 ): SimulationResult {
   const startTime = performance.now();
   const game = new HeadlessGame(config);
   let totalMoves = 0;
+
+  // Start recording if requested
+  if (config.recordGame && config.strategyName) {
+    game.startRecording(config.strategyName);
+  }
 
   while (!game.getState().isGameOver && totalMoves < 10000) { // Safety limit
     const move = strategy(game);
@@ -353,6 +358,12 @@ export function runSimulation(
   const endTime = performance.now();
   const finalState = game.getState();
 
+  // Stop recording and get the recording
+  let recording: GameRecording | undefined;
+  if (config.recordGame) {
+    recording = game.stopRecording();
+  }
+
   return {
     score: finalState.score,
     moves: totalMoves,
@@ -361,6 +372,7 @@ export function runSimulation(
     isGameOver: finalState.isGameOver,
     finalGrid: finalState.grid,
     seed: game.getSeed(),
-    duration: endTime - startTime
+    duration: endTime - startTime,
+    recording
   };
 }
