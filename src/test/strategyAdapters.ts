@@ -246,8 +246,8 @@ export const riskTakingStrategy: BenchmarkStrategy = {
 };
 
 export const winProbabilityStrategy: BenchmarkStrategy = {
-  name: "Win Probability",
-  description: "Evaluates each move purely on probability of eventually reaching 2048",
+  name: "Strategic Analyzer",
+  description: "Uses Monte Carlo simulations and heuristics to find optimal paths to 2048",
   strategy: (game: HeadlessGame): Direction | null => {
     const winProb = new WinProbabilityStrategy();
     const gameState = convertGameState(game);

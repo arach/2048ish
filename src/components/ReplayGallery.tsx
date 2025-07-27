@@ -41,7 +41,8 @@ export function ReplayGallery({ recordings, title = "Game Replays" }: ReplayGall
 
   const getStrategyStyle = (strategy: string): { backgroundColor: string; color: string } => {
     const strategyColors = {
-      'Win Probability': theme.tiles[512],
+      'Strategic Analyzer': theme.tiles[512],
+      'Win Probability': theme.tiles[512], // Fallback for old data
       'Endgame Specialist': theme.tiles[1024], 
       'Greedy': theme.tiles[256],
       'MCTS Win Hunter': theme.tiles[128],
@@ -65,84 +66,82 @@ export function ReplayGallery({ recordings, title = "Game Replays" }: ReplayGall
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 
-          className="text-3xl font-bold"
-          style={{ 
-            color: theme.ui.text.primary,
-            fontFamily: 'var(--font-silkscreen)'
-          }}
-        >
-          {title}
-        </h2>
-        <div 
-          className="text-lg font-semibold"
-          style={{ color: theme.ui.text.secondary }}
-        >
-          {filteredAndSorted.length} games
-        </div>
-      </div>
-
-      {/* Filters and Sorting */}
-      <div 
-        className="flex gap-6 items-center p-6 rounded-xl"
-        style={{ 
-          backgroundColor: theme.board.empty,
-          border: `2px solid ${theme.board.grid}`
-        }}
-      >
-        <div>
-          <label 
-            className="block text-sm font-bold mb-2"
+      {/* Title and Filters Row */}
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div className="flex items-center gap-6">
+          <h2 
+            className="text-3xl font-bold"
             style={{ 
               color: theme.ui.text.primary,
               fontFamily: 'var(--font-silkscreen)'
             }}
           >
-            Strategy:
-          </label>
-          <select
-            value={filterStrategy}
-            onChange={(e) => setFilterStrategy(e.target.value)}
-            className="rounded-lg px-4 py-2 font-semibold"
-            style={{ 
-              backgroundColor: theme.ui.card.background,
-              border: `2px solid ${theme.board.grid}`,
-              color: theme.ui.text.primary
-            }}
+            {title}
+          </h2>
+          <div 
+            className="text-lg font-semibold"
+            style={{ color: theme.ui.text.secondary }}
           >
-            <option value="all">All Strategies</option>
-            {strategies.map(strategy => (
-              <option key={strategy} value={strategy}>{strategy}</option>
-            ))}
-          </select>
+            {filteredAndSorted.length} games
+          </div>
         </div>
 
-        <div>
-          <label 
-            className="block text-sm font-bold mb-2"
-            style={{ 
-              color: theme.ui.text.primary,
-              fontFamily: 'var(--font-silkscreen)'
-            }}
-          >
-            Sort by:
-          </label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="rounded-lg px-4 py-2 font-semibold"
-            style={{ 
-              backgroundColor: theme.ui.card.background,
-              border: `2px solid ${theme.board.grid}`,
-              color: theme.ui.text.primary
-            }}
-          >
-            <option value="score">Score (High to Low)</option>
-            <option value="moves">Moves (High to Low)</option>
-            <option value="maxTile">Max Tile (High to Low)</option>
-            <option value="strategy">Strategy (A-Z)</option>
-          </select>
+        <div className="flex items-center gap-4">
+          {/* Strategy Filter */}
+          <div className="flex items-center gap-2">
+            <label 
+              className="text-sm font-bold whitespace-nowrap"
+              style={{ 
+                color: theme.ui.text.primary,
+                fontFamily: 'var(--font-silkscreen)'
+              }}
+            >
+              Strategy:
+            </label>
+            <select
+              value={filterStrategy}
+              onChange={(e) => setFilterStrategy(e.target.value)}
+              className="rounded-lg px-3 py-1 font-semibold text-sm"
+              style={{ 
+                backgroundColor: theme.ui.card.background,
+                border: `2px solid ${theme.board.grid}`,
+                color: theme.ui.text.primary
+              }}
+            >
+              <option value="all">All Strategies</option>
+              {strategies.map(strategy => (
+                <option key={strategy} value={strategy}>{strategy}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort Filter */}
+          <div className="flex items-center gap-2">
+            <label 
+              className="text-sm font-bold whitespace-nowrap"
+              style={{ 
+                color: theme.ui.text.primary,
+                fontFamily: 'var(--font-silkscreen)'
+              }}
+            >
+              Sort by:
+            </label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="rounded-lg px-3 py-1 font-semibold text-sm"
+              style={{ 
+                backgroundColor: theme.ui.card.background,
+                border: `2px solid ${theme.board.grid}`,
+                color: theme.ui.text.primary
+              }}
+            >
+              <option value="score">Score (High to Low)</option>
+              <option value="moves">Moves (High to Low)</option>
+              <option value="maxTile">Max Tile (High to Low)</option>
+              <option value="strategy">Strategy (A-Z)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -154,14 +153,23 @@ export function ReplayGallery({ recordings, title = "Game Replays" }: ReplayGall
             className="rounded-xl p-6 cursor-pointer transform hover:-translate-y-2 transition-all duration-200 shadow-lg hover:shadow-xl"
             style={{ 
               backgroundColor: theme.ui.card.background,
-              border: `3px solid ${theme.board.grid}`
+              border: `1px solid ${theme.board.grid}40`
             }}
             onClick={() => setSelectedRecording(recording)}
           >
-            {/* Strategy Badge */}
-            <div className="flex justify-between items-start mb-4">
+            {/* Strategy Header */}
+            <div className="flex justify-between items-center mb-4">
               <span 
-                className="text-sm px-3 py-2 rounded-lg font-bold"
+                className="text-xs font-medium"
+                style={{ 
+                  color: theme.ui.text.secondary,
+                  fontFamily: 'var(--font-silkscreen)'
+                }}
+              >
+                Strategy:
+              </span>
+              <span 
+                className="text-sm px-2 py-1 rounded-lg font-bold"
                 style={{ 
                   backgroundColor: getStrategyStyle(recording.strategy).backgroundColor,
                   color: getStrategyStyle(recording.strategy).color,
@@ -170,140 +178,172 @@ export function ReplayGallery({ recordings, title = "Game Replays" }: ReplayGall
               >
                 {recording.strategy}
               </span>
-              {getPerformanceBadge(recording) && (
-                <span className="text-lg">
-                  {getPerformanceBadge(recording)}
-                </span>
-              )}
             </div>
 
-            {/* Key Stats */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span 
-                  className="text-sm font-medium"
-                  style={{ color: theme.ui.text.secondary }}
-                >
-                  Score:
-                </span>
-                <span 
-                  className="font-bold text-lg"
+            {/* Board and Stats Layout */}
+            <div className="flex gap-4">
+              {/* Final Board */}
+              <div className="flex-shrink-0">
+                <div 
+                  className="text-xs font-medium mb-2"
                   style={{ 
-                    color: theme.ui.text.primary,
+                    color: theme.ui.text.secondary,
                     fontFamily: 'var(--font-silkscreen)'
                   }}
                 >
-                  {recording.result.score.toLocaleString()}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span 
-                  className="text-sm font-medium"
-                  style={{ color: theme.ui.text.secondary }}
-                >
-                  Max Tile:
-                </span>
-                <span 
-                  className="font-bold text-lg px-2 py-1 rounded"
+                  Final Board:
+                </div>
+                <div 
+                  className="p-2 rounded-lg"
                   style={{ 
-                    backgroundColor: getTileStyle(recording.result.maxTile).background,
-                    color: getTileStyle(recording.result.maxTile).text,
-                    fontFamily: 'var(--font-silkscreen)'
+                    backgroundColor: theme.board.empty,
+                    border: `1px solid ${theme.board.grid}`,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                   }}
                 >
-                  {recording.result.maxTile}
-                </span>
+                  <div className="grid grid-cols-4 gap-1">
+                    {recording.finalState.grid.flat().map((value, cellIndex) => {
+                      const tileStyle = value ? getTileStyle(value) : { 
+                        background: theme.board.empty, 
+                        text: theme.ui.text.tertiary 
+                      };
+                      
+                      // Create slightly muted versions of the tile colors
+                      const mutedBackground = value 
+                        ? `color-mix(in srgb, ${tileStyle.background} 80%, ${theme.ui.card.background} 20%)`
+                        : theme.board.empty;
+                      const mutedText = value 
+                        ? `color-mix(in srgb, ${tileStyle.text} 90%, ${theme.ui.text.secondary} 10%)`
+                        : theme.ui.text.tertiary;
+                        
+                      return (
+                        <div
+                          key={cellIndex}
+                          className="w-8 h-8 flex items-center justify-center rounded font-bold"
+                          style={{
+                            backgroundColor: mutedBackground,
+                            color: mutedText,
+                            fontFamily: 'var(--font-silkscreen)',
+                            fontSize: '9px',
+                            border: `1px solid ${theme.board.grid}`,
+                            boxShadow: value ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                          }}
+                        >
+                          {value ? (value >= 1000 ? (value >= 2048 ? '2K+' : '1K') : value) : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <span 
-                  className="text-sm font-medium"
-                  style={{ color: theme.ui.text.secondary }}
-                >
-                  Moves:
-                </span>
-                <span 
-                  className="font-bold"
-                  style={{ color: theme.ui.text.primary }}
-                >
-                  {recording.result.moves}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span 
-                  className="text-sm font-medium"
-                  style={{ color: theme.ui.text.secondary }}
-                >
-                  Duration:
-                </span>
-                <span 
-                  className="text-sm"
-                  style={{ color: theme.ui.text.secondary }}
-                >
-                  {formatDuration(recording.result.duration)}
-                </span>
-              </div>
-            </div>
 
-            {/* Mini Grid Preview */}
-            <div className="mt-4">
-              <div 
-                className="text-xs font-bold mb-2"
-                style={{ 
-                  color: theme.ui.text.secondary,
-                  fontFamily: 'var(--font-silkscreen)'
-                }}
-              >
-                Final Board:
-              </div>
-              <div 
-                className="grid grid-cols-4 gap-1 p-2 rounded-lg"
-                style={{ backgroundColor: theme.board.background }}
-              >
-                {recording.finalState.grid.flat().map((value, cellIndex) => {
-                  const tileStyle = value ? getTileStyle(value) : { backgroundColor: theme.board.empty, color: theme.ui.text.secondary };
-                  return (
-                    <div
-                      key={cellIndex}
-                      className="w-5 h-5 text-[7px] flex items-center justify-center rounded font-bold"
-                      style={{
-                        backgroundColor: tileStyle.backgroundColor,
-                        color: tileStyle.color
+              {/* Stats Column */}
+              <div className="flex-1">
+                {/* Push content down to align with board container */}
+                <div className="text-xs mb-2">&nbsp;</div>
+                
+                {/* Highlighted Score */}
+                <div 
+                  className="p-2 rounded-lg text-center mb-3"
+                  style={{ 
+                    backgroundColor: `${theme.ui.accent}15`,
+                    border: `1px solid ${theme.ui.accent}`
+                  }}
+                >
+                  <div 
+                    className="text-xs font-medium"
+                    style={{ color: theme.ui.text.secondary }}
+                  >
+                    Score
+                  </div>
+                  <div 
+                    className="font-bold text-lg"
+                    style={{ 
+                      color: theme.ui.accent,
+                      fontFamily: 'var(--font-silkscreen)'
+                    }}
+                  >
+                    {recording.result.score.toLocaleString()}
+                  </div>
+                </div>
+                {/* Other Stats */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center leading-tight">
+                    <span 
+                      className="text-xs font-medium"
+                      style={{ color: theme.ui.text.secondary }}
+                    >
+                      Max Tile:
+                    </span>
+                    <span 
+                      className="font-bold text-xs px-1.5 py-0.5 rounded"
+                      style={{ 
+                        backgroundColor: getTileStyle(recording.result.maxTile).background,
+                        color: getTileStyle(recording.result.maxTile).text,
+                        fontFamily: 'var(--font-silkscreen)'
                       }}
                     >
-                      {value ? (value >= 1000 ? '1k+' : value) : ''}
-                    </div>
-                  );
-                })}
+                      {recording.result.maxTile}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center leading-tight">
+                    <span 
+                      className="text-xs font-medium"
+                      style={{ color: theme.ui.text.secondary }}
+                    >
+                      Moves:
+                    </span>
+                    <span 
+                      className="font-bold text-xs"
+                      style={{ 
+                        color: theme.ui.text.primary,
+                        fontFamily: 'var(--font-silkscreen)'
+                      }}
+                    >
+                      {recording.result.moves}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center leading-tight">
+                    <span 
+                      className="text-xs font-medium"
+                      style={{ color: theme.ui.text.secondary }}
+                    >
+                      Duration:
+                    </span>
+                    <span 
+                      className="text-xs"
+                      style={{ 
+                        color: theme.ui.text.primary,
+                        fontFamily: 'var(--font-silkscreen)'
+                      }}
+                    >
+                      {formatDuration(recording.result.duration)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center leading-tight">
+                    <span 
+                      className="text-xs font-medium"
+                      style={{ color: theme.ui.text.secondary }}
+                    >
+                      Big Merges:
+                    </span>
+                    <span 
+                      className="text-xs"
+                      style={{ 
+                        color: theme.ui.text.primary,
+                        fontFamily: 'var(--font-silkscreen)'
+                      }}
+                    >
+                      {recording.moves.filter(m => m.scoreIncrease >= 128).length}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Key Moments Preview */}
-            {recording.moves.length > 0 && (
-              <div 
-                className="mt-4 text-xs space-y-1"
-                style={{ color: theme.ui.text.secondary }}
-              >
-                {recording.moves.filter(m => m.scoreIncrease >= 128).length > 0 && (
-                  <div className="flex items-center">
-                    <span className="mr-2">🔥</span>
-                    <span className="font-semibold">
-                      {recording.moves.filter(m => m.scoreIncrease >= 128).length} big merges
-                    </span>
-                  </div>
-                )}
-                {recording.result.maxTile >= 512 && (
-                  <div className="flex items-center">
-                    <span className="mr-2">🎯</span>
-                    <span className="font-semibold">
-                      Reached {recording.result.maxTile} tile
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         ))}
       </div>

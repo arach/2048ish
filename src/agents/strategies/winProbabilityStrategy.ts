@@ -7,8 +7,8 @@ interface WinPath {
 }
 
 export class WinProbabilityStrategy implements PlayStrategy {
-  name = "Win Probability";
-  description = "Evaluates each move purely on probability of eventually reaching 2048";
+  name = "Strategic Analyzer";
+  description = "Uses Monte Carlo simulations and heuristics to find optimal paths to 2048";
   icon = "🎯";
   
   private lookAheadDepth = 1;  // Minimal for benchmarking

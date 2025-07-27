@@ -56,13 +56,21 @@ export default function ReplaysPage() {
   }
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{ 
-        background: `linear-gradient(to bottom right, ${theme.background.gradient.from}, ${theme.background.gradient.to})` 
-      }}
-    >
-      <div className="container mx-auto px-4 py-8">
+    <>
+      <style jsx global>{`
+        body {
+          overflow: auto !important;
+          position: static !important;
+          height: auto !important;
+        }
+      `}</style>
+      <div 
+        className="min-h-screen"
+        style={{ 
+          background: `linear-gradient(to bottom right, ${theme.background.gradient.from}, ${theme.background.gradient.to})` 
+        }}
+      >
+        <div className="container mx-auto px-4 py-8 pb-16">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 
@@ -96,7 +104,7 @@ export default function ReplaysPage() {
               }}
             >
               <div 
-                className="text-3xl font-bold mb-2"
+                className="text-3xl font-normal mb-2"
                 style={{ 
                   fontFamily: 'var(--font-silkscreen)',
                   color: theme.ui.accent
@@ -115,7 +123,7 @@ export default function ReplaysPage() {
               }}
             >
               <div 
-                className="text-3xl font-bold mb-2"
+                className="text-3xl font-normal mb-2"
                 style={{ 
                   fontFamily: 'var(--font-silkscreen)',
                   color: theme.tiles[512].background
@@ -134,7 +142,7 @@ export default function ReplaysPage() {
               }}
             >
               <div 
-                className="text-3xl font-bold mb-2"
+                className="text-3xl font-normal mb-2"
                 style={{ 
                   fontFamily: 'var(--font-silkscreen)',
                   color: theme.tiles[1024].background
@@ -153,7 +161,7 @@ export default function ReplaysPage() {
               }}
             >
               <div 
-                className="text-3xl font-bold mb-2"
+                className="text-3xl font-normal mb-2"
                 style={{ 
                   fontFamily: 'var(--font-silkscreen)',
                   color: theme.ui.text.primary
@@ -266,5 +274,6 @@ export default function ReplaysPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
