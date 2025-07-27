@@ -5,11 +5,19 @@ import { ReplayGallery } from '../../components/ReplayGallery';
 import { GameRecording } from '../../game/headlessGame';
 import { generateRealisticRecordings } from '../../utils/generateRealisticRecordings';
 import { theme } from '../../theme/colors';
+import { AgentBenchmark } from '../../test/agentBenchmark';
+import { allStrategies } from '../../test/strategyAdapters';
 
 
 export default function ReplaysPage() {
   const [recordings, setRecordings] = useState<GameRecording[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<{
+    completed: number;
+    total: number;
+    currentStrategy: string;
+  } | null>(null);
 
   useEffect(() => {
     const loadRecordings = async () => {
@@ -43,6 +51,69 @@ export default function ReplaysPage() {
 
     loadRecordings();
   }, []);
+
+  const generateNewReplays = async () => {
+    setIsGenerating(true);
+    setGenerationProgress(null);
+    
+    try {
+      const benchmark = new AgentBenchmark();
+      benchmark.addStrategies(allStrategies);
+      
+      const newRecordings: GameRecording[] = [];
+      
+      // Run a smaller benchmark per strategy to get good recordings quickly
+      const runsPerStrategy = 5; // Keep it manageable for UI
+      
+      for (const strategy of allStrategies) {
+        setGenerationProgress({
+          completed: 0,
+          total: runsPerStrategy,
+          currentStrategy: strategy.name
+        });
+        
+        const strategyBenchmark = new AgentBenchmark();
+        strategyBenchmark.addStrategy(strategy);
+        
+        const results = await strategyBenchmark.runBenchmark({
+          runs: runsPerStrategy,
+          useRandomSeeds: true,
+          recordGames: true,
+          progressCallback: (completed, total, strategyName) => {
+            setGenerationProgress({
+              completed,
+              total,
+              currentStrategy: strategyName
+            });
+          }
+        });
+        
+        // Extract recordings from results
+        for (const strategyStats of results.strategies) {
+          for (const result of strategyStats.results) {
+            if (result.recording) {
+              newRecordings.push(result.recording);
+            }
+          }
+        }
+      }
+      
+      // Combine with existing recordings
+      const allRecordings = [...recordings, ...newRecordings];
+      setRecordings(allRecordings);
+      
+      // Save to localStorage
+      localStorage.setItem('gameRecordings', JSON.stringify(allRecordings));
+      
+      console.log(`✅ Generated ${newRecordings.length} new game recordings`);
+      
+    } catch (error) {
+      console.error('Failed to generate recordings:', error);
+    } finally {
+      setIsGenerating(false);
+      setGenerationProgress(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -254,22 +325,50 @@ export default function ReplaysPage() {
               Run benchmarks with recording enabled to create new game replays for analysis.
             </p>
             <button 
-              onClick={() => window.location.href = '/'}
-              className="px-8 py-3 rounded-lg font-semibold transform hover:-translate-y-1 transition-all duration-200 shadow-lg"
+              onClick={generateNewReplays}
+              disabled={isGenerating}
+              className="px-8 py-3 rounded-lg font-semibold transform hover:-translate-y-1 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:transform-none"
               style={{ 
-                backgroundColor: theme.ui.button.primary.background,
+                backgroundColor: isGenerating ? theme.ui.text.secondary : theme.ui.button.primary.background,
                 color: theme.ui.button.primary.text,
                 fontFamily: 'var(--font-silkscreen)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme.ui.button.primary.hover;
+                if (!isGenerating) {
+                  e.currentTarget.style.backgroundColor = theme.ui.button.primary.hover;
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = theme.ui.button.primary.background;
+                if (!isGenerating) {
+                  e.currentTarget.style.backgroundColor = theme.ui.button.primary.background;
+                }
               }}
             >
-              Go to Game
+              {isGenerating ? 'Generating...' : 'Generate New Replays'}
             </button>
+            
+            {generationProgress && (
+              <div className="mt-4 text-center">
+                <div 
+                  className="text-sm mb-2"
+                  style={{ color: theme.ui.text.secondary }}
+                >
+                  Running {generationProgress.currentStrategy}: {generationProgress.completed}/{generationProgress.total}
+                </div>
+                <div 
+                  className="w-full bg-gray-200 rounded-full h-2"
+                  style={{ backgroundColor: theme.board.empty }}
+                >
+                  <div 
+                    className="h-2 rounded-full transition-all duration-300"
+                    style={{ 
+                      backgroundColor: theme.ui.accent,
+                      width: `${(generationProgress.completed / generationProgress.total) * 100}%`
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
