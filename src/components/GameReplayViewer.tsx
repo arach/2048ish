@@ -53,6 +53,47 @@ export function GameReplayViewer({ recording, onClose }: GameReplayViewerProps) 
     return value.toString();
   };
 
+  const getDirectionArrow = (direction: string) => {
+    const arrowStyle = {
+      width: 0,
+      height: 0,
+      display: 'inline-block'
+    };
+
+    switch (direction) {
+      case 'up':
+        return <div style={{
+          ...arrowStyle,
+          borderLeft: '3px solid transparent',
+          borderRight: '3px solid transparent',
+          borderBottom: '4px solid white'
+        }} />;
+      case 'down':
+        return <div style={{
+          ...arrowStyle,
+          borderLeft: '3px solid transparent',
+          borderRight: '3px solid transparent',
+          borderTop: '4px solid white'
+        }} />;
+      case 'left':
+        return <div style={{
+          ...arrowStyle,
+          borderTop: '3px solid transparent',
+          borderBottom: '3px solid transparent',
+          borderRight: '4px solid white'
+        }} />;
+      case 'right':
+        return <div style={{
+          ...arrowStyle,
+          borderTop: '3px solid transparent',
+          borderBottom: '3px solid transparent',
+          borderLeft: '4px solid white'
+        }} />;
+      default:
+        return <span>{direction.toUpperCase()}</span>;
+    }
+  };
+
 
   const goToMove = (index: number) => {
     const maxIndex = Math.max(0, recording.moves.length - 1);
@@ -75,7 +116,7 @@ export function GameReplayViewer({ recording, onClose }: GameReplayViewerProps) 
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-2"
+      className="fixed inset-0 bg-black flex items-center justify-center z-50 p-2"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -168,7 +209,7 @@ export function GameReplayViewer({ recording, onClose }: GameReplayViewerProps) 
                         backgroundColor: value ? tileStyle.background : theme.board.empty,
                         color: value ? tileStyle.text : theme.ui.text.secondary,
                         fontFamily: 'var(--font-silkscreen)',
-                        border: `2px solid ${theme.board.grid}`
+                        border: `1px solid ${theme.board.grid}60`
                       }}
                     >
                       {value ? (value >= 1000 ? (value >= 2048 ? '2K+' : '1K+') : value) : ''}
@@ -178,33 +219,41 @@ export function GameReplayViewer({ recording, onClose }: GameReplayViewerProps) 
               </div>
             </div>
 
-            {/* Compact Move Info */}
+          </div>
+
+          {/* Controls and Analysis */}
+          <div className="flex-1 space-y-2">
+            {/* Current Move Info */}
             {currentMove && (
               <div 
-                className="mt-2 p-2 rounded-lg"
+                className="p-2 rounded-lg"
                 style={{ backgroundColor: theme.board.empty }}
               >
                 <div 
-                  className="font-light text-xs"
+                  className="font-light text-xs flex items-center gap-2"
                   style={{ 
                     color: theme.ui.text.primary,
                     fontFamily: 'var(--font-silkscreen)'
                   }}
                 >
-                  #{currentMove.moveNumber}: {currentMove.direction.toUpperCase()}
-                </div>
-                <div 
-                  className="text-xs"
-                  style={{ color: theme.ui.text.secondary }}
-                >
-                  +{currentMove.scoreIncrease} → {currentMove.totalScore.toLocaleString()}
+                  <span>#{currentMove.moveNumber}:</span>
+                  <span 
+                    className="px-1.5 py-0.5 rounded font-bold"
+                    style={{
+                      backgroundColor: theme.ui.accent,
+                      color: 'white',
+                      fontSize: '10px'
+                    }}
+                  >
+                    {getDirectionArrow(currentMove.direction)}
+                  </span>
+                  <span style={{ color: theme.ui.text.secondary }}>
+                    +{currentMove.scoreIncrease} → {currentMove.totalScore.toLocaleString()}
+                  </span>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Controls and Analysis */}
-          <div className="flex-1 space-y-2">
             {/* Compact Playback Controls */}
             <div 
               className="p-2 rounded-lg"
@@ -215,14 +264,14 @@ export function GameReplayViewer({ recording, onClose }: GameReplayViewerProps) 
                   <button
                     onClick={() => step('prev')}
                     disabled={currentMoveIndex === 0}
-                    className="px-2 py-1 rounded text-xs font-medium disabled:opacity-50"
+                    className="w-7 h-7 rounded text-sm font-medium disabled:opacity-50 flex items-center justify-center"
                     style={{ 
                       backgroundColor: theme.ui.button.secondary.background,
                       color: theme.ui.button.secondary.text,
                       fontFamily: 'var(--font-silkscreen)'
                     }}
                   >
-                    ←
+                    ‹
                   </button>
                   
                   <button
@@ -240,14 +289,14 @@ export function GameReplayViewer({ recording, onClose }: GameReplayViewerProps) 
                   <button
                     onClick={() => step('next')}
                     disabled={currentMoveIndex === recording.moves.length - 1}
-                    className="px-2 py-1 rounded text-xs font-medium disabled:opacity-50"
+                    className="w-7 h-7 rounded text-sm font-medium disabled:opacity-50 flex items-center justify-center"
                     style={{ 
                       backgroundColor: theme.ui.button.secondary.background,
                       color: theme.ui.button.secondary.text,
                       fontFamily: 'var(--font-silkscreen)'
                     }}
                   >
-                    →
+                    ›
                   </button>
                 </div>
                 

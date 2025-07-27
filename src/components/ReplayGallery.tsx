@@ -225,7 +225,7 @@ export function ReplayGallery({ recordings, title = "Game Replays" }: ReplayGall
                             color: mutedText,
                             fontFamily: 'var(--font-silkscreen)',
                             fontSize: '9px',
-                            border: `1px solid ${theme.board.grid}`,
+                            border: `1px solid ${theme.board.grid}60`,
                             boxShadow: value ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
                           }}
                         >
